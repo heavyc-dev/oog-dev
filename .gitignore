@@ -1,0 +1,19 @@
+# secrets & local config — NEVER commit (.env holds your AUTH_TOKEN)
+.env
+
+# per-machine Claude Code settings (the .local file is not meant to be shared)
+.claude/settings.local.json
+
+# deps & build
+node_modules/
+
+# runtime state (caves/embers + generated hook settings)
+.oog/
+
+# certs, if you keep them in-tree
+*.pem
+
+# os/editor noise
+.DS_Store
+Thumbs.db
+*.log

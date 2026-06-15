@@ -1,0 +1,5 @@
+# normalize line endings: LF in the repo, native on checkout
+* text=auto eol=lf
+*.png binary
+*.ico binary
+*.ps1 text eol=crlf

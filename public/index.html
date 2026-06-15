@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
+<meta name="theme-color" content="#241910">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="assets/favicon.png">
+<link rel="apple-touch-icon" href="assets/icon-192.png">
+<title>oog.dev</title>
+<link rel="stylesheet" href="vendor/xterm.css">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="grain"></div><div class="torch"></div>
+
+<div id="app">
+
+  <!-- CONNECT -->
+  <section id="screen-connect" class="screen active">
+    <div class="tablet"><img class="face" id="connFace" width="84" alt="Caveman Claude"></div>
+    <div class="plate">OOG<b>.DEV</b></div>
+    <p>Me guard your fire. Speak the secret word to come in.</p>
+    <input id="tokenInput" type="password" placeholder="auth token" autocomplete="off" spellcheck="false">
+    <button class="btn" id="connectBtn">▸ light the fire</button>
+    <div class="muted hidden" id="connMsg"></div>
+  </section>
+
+  <!-- CAVES -->
+  <section id="screen-caves" class="screen">
+    <div class="topline">
+      <div><div class="eyebrow">OOG.DEV</div><h1 class="head">Pick a cave</h1></div>
+      <div style="display:flex;gap:8px">
+        <button class="btn ghost" id="settingsBtn" title="settings">⚙</button>
+        <button class="btn ghost" id="notifBtn" title="enable notifications">🔔</button>
+        <button class="btn ghost" id="logoutBtn" title="forget the saved token">forget</button>
+        <button class="btn ghost" id="refreshBtn">↻</button>
+      </div>
+    </div>
+    <div class="slots" id="caveList"></div>
+    <div class="newcave">
+      <div class="lbl">LIGHT A NEW FIRE</div>
+      <div class="chips" id="projectChips"></div>
+      <div class="pathrow">
+        <input id="pathInput" type="text" placeholder="C:\path\to\repo" spellcheck="false">
+        <button class="btn ghost" id="browseBtn" title="browse folders">📁</button>
+        <button class="btn" id="newCaveBtn">▸ light</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- CHAT -->
+  <section id="screen-chat" class="screen">
+    <div class="bar">
+      <button class="iconbtn" id="backBtn" title="back to caves">⟵</button>
+      <div class="tablet" id="hdrTablet" style="padding:3px"><img class="face" id="hdrFace" width="40" alt="Claude"></div>
+      <div class="who">
+        <div class="nm" id="hdrName">cave</div>
+        <div class="st" id="hdrStatus"><span class="dot"></span><span id="hdrStatusText">fire lit</span></div>
+      </div>
+      <button class="iconbtn" id="searchBtn" title="search the terminal">🔍</button>
+      <button class="iconbtn warn-ico" id="closeBtn" title="put out the fire" style="color:var(--danger)">✕</button>
+    </div>
+
+    <div class="searchbar hidden" id="searchBar">
+      <input id="searchInput" type="text" placeholder="find in terminal…" spellcheck="false" autocomplete="off">
+      <button class="cap" id="searchPrev" title="previous">↑</button>
+      <button class="cap" id="searchNext" title="next">↓</button>
+      <button class="cap" id="searchClose">✕</button>
+    </div>
+
+    <div id="term"></div>
+
+    <div class="composer">
+      <div class="queue" id="queue" style="display:none"></div>
+      <div class="snips" id="snips"></div>
+      <div class="cmdmenu hidden" id="cmdMenu"></div>
+      <div class="keys">
+        <span class="cap" data-key="tab">Tab ⇄</span>
+        <span class="cap" data-key="shift-tab">⇧Tab</span>
+        <span class="cap" data-key="esc">Esc</span>
+        <span class="cap" data-key="up">↑</span>
+        <span class="cap" data-key="down">↓</span>
+        <span class="cap" data-key="1">1</span>
+        <span class="cap" data-key="2">2</span>
+        <span class="cap" data-key="3">3</span>
+        <span class="cap" data-key="enter">⏎</span>
+        <span class="cap warn" data-key="ctrl-c">Ctrl-C</span>
+        <span class="cap" id="fontDn" title="smaller text">A−</span>
+        <span class="cap" id="fontUp" title="bigger text">A+</span>
+      </div>
+      <div class="inrow">
+        <button class="iconbtn" id="micBtn" title="dictate">🎤</button>
+        <button class="iconbtn" id="camBtn" title="send a photo">📷</button>
+        <textarea id="input" rows="1" placeholder="tell claude…" spellcheck="false"></textarea>
+        <button class="btn" id="sendBtn">▸ say</button>
+      </div>
+      <input type="file" id="fileInput" accept="image/*" hidden>
+    </div>
+  </section>
+</div>
+
+<!-- permission overlay -->
+<div id="choice">
+  <div class="choicebox">
+    <div class="q" id="choiceQ">CLAUDE WANT DO THING. ME DO?</div>
+    <pre id="choiceRaw"></pre>
+    <div class="opts">
+      <button class="btn" data-key="1">▸ YES (1)</button>
+      <button class="btn ghost" data-key="2">WAIT (2)</button>
+      <button class="btn ghost" data-key="3">TELL (3)</button>
+      <button class="btn ghost" id="choiceDismiss">✕</button>
+    </div>
+  </div>
+</div>
+
+<!-- folder browser (pick a cave) -->
+<div id="browser">
+  <div class="browserbox">
+    <div class="vhead"><span id="browsePath">…</span><div class="vactions"><button class="btn" id="browseHere">▸ light here</button><button class="btn ghost" id="browseClose">✕</button></div></div>
+    <div id="browseList" class="browselist"></div>
+  </div>
+</div>
+
+<!-- settings -->
+<div id="settings">
+  <div class="settingsbox">
+    <div class="vhead"><span>SETTINGS</span><div class="vactions"><button class="btn ghost" id="settingsClose">✕</button></div></div>
+    <div class="sbody">
+      <div class="eyebrow">DEFAULT QUICK COMMANDS</div>
+      <p class="muted" style="font-size:14px;margin:4px 0 10px">One-tap prompts shown under every cave. Per-cave edits (✎ in a cave) override these.</p>
+      <div id="snipEditor"></div>
+      <div class="srow"><button class="btn ghost" id="snipAdd">+ add</button><button class="btn" id="snipSave">▸ save</button></div>
+
+      <div class="eyebrow" style="margin-top:18px">PAIR A DEVICE</div>
+      <p class="muted" style="font-size:14px;margin:4px 0 10px">Scan to open oog on your phone with this token baked in. Treat it like a password.</p>
+      <div id="qrBox"></div>
+      <div class="muted" id="pairUrl" style="font-size:12px;word-break:break-all;margin-top:6px"></div>
+    </div>
+  </div>
+</div>
+
+<!-- file viewer -->
+<div id="viewer">
+  <div class="viewerbox">
+    <div class="vhead"><span id="viewerName">file</span><div class="vactions"><button class="btn ghost" id="viewerChange">this change</button><button class="btn ghost" id="viewerCurrent">current file</button><button class="btn ghost" id="viewerCopy">copy</button><button class="btn ghost" id="viewerClose">✕</button></div></div>
+    <pre id="viewerBody"></pre>
+  </div>
+</div>
+
+<script src="vendor/xterm.js"></script>
+<script src="vendor/addon-fit.js"></script>
+<script src="vendor/addon-search.js"></script>
+<script src="vendor/qrcode.js"></script>
+<script src="app.js"></script>
+<script>if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});</script>
+</body>
+</html>
