@@ -4,7 +4,16 @@
 $ErrorActionPreference = "Stop"
 Add-Type -AssemblyName System.Windows.Forms
 Add-Type -AssemblyName System.Drawing
-$root = Split-Path $PSScriptRoot -Parent
+# resolve the repo root robustly ($PSScriptRoot can be empty depending on how the script is launched)
+$self = $PSCommandPath
+if (-not $self -and $MyInvocation.MyCommand.Path) { $self = $MyInvocation.MyCommand.Path }
+if ($self) { $root = Split-Path -Parent (Split-Path -Parent $self) }
+elseif ($PSScriptRoot) { $root = Split-Path -Parent $PSScriptRoot }
+else { $root = (Get-Location).Path }
+if (-not (Test-Path (Join-Path $root "setup.mjs"))) {
+  [System.Windows.Forms.MessageBox]::Show("Couldn't find setup.mjs. Run this from the oog repo (double-click oog-setup.cmd in the repo folder).", "oog.dev setup", "OK", "Error") | Out-Null
+  return
+}
 
 function Get-TailnetName {
   try { $j = (& tailscale status --json | Out-String | ConvertFrom-Json); return ($j.Self.DNSName -replace '\.$', '') } catch { return "" }
