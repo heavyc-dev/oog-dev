@@ -8,10 +8,12 @@
 
 A pixel caveman who grunts through a stone tablet — your real `claude` REPL, rendered as a live terminal on your phone, on your **subscription** (not API credits).
 
+[![CI](https://github.com/heavyc-dev/oog-dev/actions/workflows/ci.yml/badge.svg)](https://github.com/heavyc-dev/oog-dev/actions/workflows/ci.yml)
 ![Node](https://img.shields.io/badge/node-20%2B-339933?logo=node.js&logoColor=white)
 ![Platform](https://img.shields.io/badge/windows%20·%20macos%20·%20linux-555)
 ![PWA](https://img.shields.io/badge/PWA-installable-orange)
 ![Local only](https://img.shields.io/badge/bind-127.0.0.1%20only-2ea44f)
+![License](https://img.shields.io/badge/license-MIT-blue)
 
 </div>
 

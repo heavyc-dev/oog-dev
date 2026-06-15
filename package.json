@@ -1,22 +1,32 @@
 {
-  "name": "oog-bridge",
+  "name": "oog-dev",
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "description": "Host interactive Claude Code on your PC, drive it from your phone (caveman themed).",
+  "description": "Run Claude Code on your PC, drive it from your phone — a pixel-caveman terminal PWA on your subscription.",
+  "license": "MIT",
+  "author": "heavyc-dev",
+  "homepage": "https://github.com/heavyc-dev/oog-dev#readme",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/heavyc-dev/oog-dev.git"
+  },
+  "bugs": {
+    "url": "https://github.com/heavyc-dev/oog-dev/issues"
+  },
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "setup": "node setup.mjs",
     "start": "tsx server.ts",
     "dev": "tsx watch server.ts",
     "test": "node --test",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "vendor": "node scripts/vendor.mjs"
   },
   "dependencies": {
-    "@xterm/addon-fit": "^0.11.0",
-    "@xterm/addon-search": "^0.16.0",
-    "@xterm/xterm": "^6.0.0",
     "node-pty": "^1.0.0",
-    "qrcode-generator": "^2.0.4",
     "web-push": "^3.6.7",
     "ws": "^8.18.0"
   },
@@ -24,6 +34,10 @@
     "@types/node": "^22.10.0",
     "@types/web-push": "^3.6.4",
     "@types/ws": "^8.5.13",
+    "@xterm/addon-fit": "^0.11.0",
+    "@xterm/addon-search": "^0.16.0",
+    "@xterm/xterm": "^6.0.0",
+    "qrcode-generator": "^2.0.4",
     "tsx": "^4.19.0",
     "typescript": "^5.7.0"
   }
