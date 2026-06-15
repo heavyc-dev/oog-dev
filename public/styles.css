@@ -111,6 +111,30 @@ h1.head{ font-family:var(--font-head); font-weight:400; font-size:30px; color:va
 .think .d{ animation:blinkdot 1.2s infinite; }
 @keyframes blinkdot{ 0%,100%{opacity:.3} 50%{opacity:1} }
 
+/* ── oog moods (caveman animations) — applied to #hdrTablet, target the face ── */
+#hdrTablet .face{ transform-origin:50% 90%; will-change:transform; }
+@keyframes oog-bob{ 0%,100%{transform:translateY(0)} 50%{transform:translateY(-2px)} }
+@keyframes oog-sway{ 0%,100%{transform:rotate(-5deg)} 50%{transform:rotate(5deg)} }
+@keyframes oog-shake{ 0%,100%{transform:translateX(0)} 15%{transform:translateX(-3px) rotate(-4deg)} 30%{transform:translateX(3px) rotate(4deg)} 45%{transform:translateX(-2px)} 60%{transform:translateX(2px)} 75%{transform:translateX(-1px)} }
+@keyframes oog-pop{ 0%{transform:scale(1)} 40%{transform:scale(1.28) rotate(-3deg)} 70%{transform:scale(.94)} 100%{transform:scale(1)} }
+@keyframes oog-squash{ 0%{transform:scale(1,1)} 25%{transform:scale(1.18,.82)} 55%{transform:scale(.9,1.12)} 100%{transform:scale(1,1)} }
+@keyframes oog-sleep{ 0%,100%{transform:rotate(0) translateY(0)} 50%{transform:rotate(3deg) translateY(1px)} }
+@keyframes oog-alert{ 0%,100%{transform:scale(1) rotate(0)} 25%{transform:scale(1.1) rotate(-4deg)} 75%{transform:scale(1.1) rotate(4deg)} }
+@keyframes oog-nod{ 0%,100%{transform:translateY(0)} 30%{transform:translateY(2px)} }
+#hdrTablet.mood-idle  .face{ animation:oog-bob 3.6s ease-in-out infinite; }
+#hdrTablet.mood-work  .face{ animation:oog-sway .5s ease-in-out infinite; }
+#hdrTablet.mood-off   .face{ animation:oog-sleep 3.2s ease-in-out infinite; }
+#hdrTablet.mood-send  .face{ animation:oog-squash .36s ease-out; }
+#hdrTablet.mood-error .face{ animation:oog-shake .45s ease-in-out; }
+#hdrTablet.mood-pop   .face{ animation:oog-pop .42s ease-out; }
+#hdrTablet.mood-tool  .face{ animation:oog-nod .3s ease-out; }
+#hdrTablet.mood-alert .face{ animation:oog-alert .7s ease-in-out infinite; }
+#hdrTablet.mood-alert{ box-shadow:var(--chisel), 0 0 14px var(--torch); }
+/* sleepy Zzz when the fire's out */
+#hdrTablet.mood-off{ position:relative; }
+#hdrTablet.mood-off::after{ content:"z"; position:absolute; top:-4px; right:-2px; font-family:var(--font-head); color:var(--clay); font-size:13px; animation:oog-bob 2.2s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce){ #hdrTablet .face{ animation:none !important; } #hdrTablet.mood-off::after{ display:none; } }
+
 /* terminal search bar */
 .searchbar{ display:flex; gap:7px; align-items:center; padding:8px 12px; background:var(--stone); border-bottom:2px solid var(--rock); }
 .searchbar input{ flex:1; font-family:var(--font-body); font-size:14px; background:var(--cave); color:var(--bone);

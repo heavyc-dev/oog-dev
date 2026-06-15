@@ -25,6 +25,13 @@
     setTimeout(() => { clearInterval(talkTimer); talking = false; setHdr('base'); }, ms); }
   document.querySelectorAll('.face').forEach(im => im.src = FRAMES.base);
 
+  // ── oog moods: caveman animations driven by app state (CSS classes on #hdrTablet) ──
+  const MOODS = ['idle', 'work', 'off', 'send', 'error', 'pop', 'tool', 'alert'];
+  let ambientMood = 'idle', moodT = null, permAlert = false;
+  function setMoodClass(m){ const h = $('#hdrTablet'); if (!h) return; h.classList.remove(...MOODS.map(x => 'mood-' + x)); h.classList.add('mood-' + m); }
+  function setAmbient(m){ ambientMood = m; clearTimeout(moodT); if (!permAlert) setMoodClass(m); }
+  function flashMood(m, ms = 450){ if (reduce || permAlert) return; setMoodClass(m); clearTimeout(moodT); moodT = setTimeout(() => setMoodClass(ambientMood), ms); }
+
   // state
   let ws = null, token = localStorage.getItem('oog_token') || '';
   // device pairing: a ?token=… in the URL (from a scanned QR) auto-fills + is stripped from the address bar
@@ -97,6 +104,7 @@
     st.classList.toggle('off', isOff); st.classList.toggle('busy', !isOff && on);
     $('#hdrStatusText').textContent = isOff ? 'fire out' : on ? 'claude working…' : 'fire lit';
     working = !isOff && !!on;
+    setAmbient(isOff ? 'off' : (on ? 'work' : 'idle'));
   }
   function ping(){ if (sessions.get(activeId)?.status !== 'running') return; setWorking(true); clearTimeout(workTimer); workTimer = setTimeout(() => { setWorking(false); flushQueue(); }, 8000); }
 
@@ -167,8 +175,10 @@
         if (!currentPermId) detectPermission(wallBuf); break;
       case 'error':
         if (m.sessionId && m.sessionId !== activeId) break;
-        if (term) term.write(`\r\n\x1b[31m⚠ ${String(m.message || '').replace(/[\r\n]+/g, ' ')}\x1b[0m\r\n`); break;
-      // user_echo / assistant / thinking / tool_use / tool_result / summary are shown by the terminal itself
+        if (term) term.write(`\r\n\x1b[31m⚠ ${String(m.message || '').replace(/[\r\n]+/g, ' ')}\x1b[0m\r\n`); flashMood('error', 800); break;
+      // terminal shows these; the caveman just reacts:
+      case 'tool_use': if (!m.sessionId || m.sessionId === activeId) flashMood('tool', 320); break;
+      case 'assistant': if (!m.sessionId || m.sessionId === activeId) talk(Math.min(2600, 700 + (m.text || '').length * 10)); break;
     }
   }
   // permission detection — the PTY is rendered by xterm; we keep a cleaned line buffer
@@ -197,6 +207,7 @@
     $('#choiceQ').innerHTML = 'CLAUDE ASK SOMETHING. ME ANSWER:';
     $('#choiceRaw').textContent = tail.split('\n').slice(-8).join('\n').trim();
     relabel('keys'); $('#choice').classList.add('show');
+    permAlert = true; setMoodClass('alert');
   }
   function showPerm(m){
     currentPermId = m.id; $('#choice').dataset.mode = 'hook';
@@ -204,13 +215,14 @@
     $('#choiceQ').innerHTML = `CLAUDE WANT USE <b>${esc(m.tool)}</b>${detail ? ` — <code>${esc(short(detail))}</code>` : ''}. ME DO?`;
     $('#choiceRaw').textContent = oneline(m.input);
     relabel('hook'); $('#choice').classList.add('show');
+    permAlert = true; setMoodClass('alert');   // caveman holds up the stones
   }
   function relabel(mode){
     const [b1, b2, b3] = document.querySelectorAll('#choice [data-key]');
     if (mode === 'hook') { b1.textContent = '▸ ALLOW'; b2.textContent = 'DENY'; b3.style.display = 'none'; }
     else { b1.textContent = '▸ YES (1)'; b2.textContent = 'WAIT (2)'; b3.style.display = ''; b3.textContent = 'TELL (3)'; }
   }
-  const closeChoice = () => { $('#choice').classList.remove('show'); };
+  const closeChoice = () => { $('#choice').classList.remove('show'); permAlert = false; setMoodClass(ambientMood); };
 
   // wire up
   $('#connectBtn').onclick = () => { token = $('#tokenInput').value.trim() || token; if (!token) { connMsg('say the word first.'); return; } reconnectN = 0; connMsg('opening the cave…'); connect(); };
@@ -223,7 +235,7 @@
   $('#closeBtn').onclick = () => { if (activeId && confirm('Put out this fire? (ends the session)')) { send({ type:'close_session', sessionId:activeId }); activeId = null; show('caves'); } };
 
   const input = $('#input');
-  function doSend(text){ send({ type:'prompt', sessionId:activeId, text }); ping(); if (term) term.focus(); }
+  function doSend(text){ send({ type:'prompt', sessionId:activeId, text }); ping(); flashMood('send', 360); if (term) term.focus(); }
   function sendText(text){ text = (text || '').trim(); if (!text || !activeId) return; if (working) enqueue(activeId, text); else doSend(text); }
   function sendPrompt(){ const t = input.value; if (!t.trim() || !activeId) return; input.value = ''; input.style.height = 'auto'; hideCmdMenu(); sendText(t); }
   $('#sendBtn').onclick = sendPrompt;
@@ -291,9 +303,11 @@
   $('#searchInput').addEventListener('input', () => { const q = $('#searchInput').value; if (search && q) search.findNext(q, { incremental: true }); });
   $('#searchInput').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); doSearch(e.shiftKey); } else if (e.key === 'Escape') { e.preventDefault(); toggleSearch(false); } });
   document.querySelectorAll('#choice [data-key]').forEach(b => b.addEventListener('click', () => {
-    if ($('#choice').dataset.mode === 'hook' && currentPermId) { send({ type:'permission', id: currentPermId, decision: b.dataset.key === '1' ? 'allow' : 'deny' }); currentPermId = null; }
+    const allow = b.dataset.key === '1';
+    if ($('#choice').dataset.mode === 'hook' && currentPermId) { send({ type:'permission', id: currentPermId, decision: allow ? 'allow' : 'deny' }); currentPermId = null; }
     else if (activeId) { send({ type:'key', sessionId:activeId, key:b.dataset.key }); send({ type:'key', sessionId:activeId, key:'enter' }); }
     closeChoice();
+    if (allow) flashMood('pop', 460);   // caveman fist-pump
   }));
   $('#choiceDismiss').onclick = () => { if (currentPermId) { send({ type:'permission', id: currentPermId, decision:'deny' }); currentPermId = null; } closeChoice(); };
 
