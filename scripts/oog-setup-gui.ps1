@@ -65,7 +65,7 @@ $form = New-Object System.Windows.Forms.Form
 $form.AutoScaleDimensions = New-Object System.Drawing.SizeF(96, 96)
 $form.AutoScaleMode = [System.Windows.Forms.AutoScaleMode]::Dpi
 $form.Text = "oog.dev setup"
-$form.ClientSize = New-Object System.Drawing.Size(600, 936)   # tall enough to show everything without scrolling
+$form.ClientSize = New-Object System.Drawing.Size(600, 968)   # tall enough to show everything without scrolling
 $form.StartPosition = "CenterScreen"
 $form.FormBorderStyle = "FixedDialog"; $form.MaximizeBox = $false
 $form.AutoScroll = $true   # if DPI scaling makes it taller than the screen, scroll instead of clipping
@@ -118,22 +118,22 @@ Add-Section "YOUR CODE"
 Add-Label "Folder that holds your repos (the cave picker):" | Out-Null
 $tbDir = New-Object System.Windows.Forms.TextBox
 $def = Join-Path $env:USERPROFILE ".code"; if (-not (Test-Path $def)) { $def = $env:USERPROFILE }
-$tbDir.Text = $def; $tbDir.Location = New-Object System.Drawing.Point($LEFT, $y); $tbDir.Size = New-Object System.Drawing.Size(($W - 96), 24); Style-Text $tbDir
+$tbDir.Text = $def; $tbDir.Location = New-Object System.Drawing.Point($LEFT, ($y + 3)); $tbDir.Size = New-Object System.Drawing.Size(($W - 128), 24); Style-Text $tbDir
 $form.Controls.Add($tbDir)
 $btnBrowse = New-Object System.Windows.Forms.Button
-$btnBrowse.Text = "Browse..."; $btnBrowse.Location = New-Object System.Drawing.Point(($LEFT + $W - 88), ($y - 1)); $btnBrowse.Size = New-Object System.Drawing.Size(88, 26)
+$btnBrowse.Text = "Browse..."; $btnBrowse.AutoSize = $true; $btnBrowse.Location = New-Object System.Drawing.Point(($LEFT + $W - 116), $y); $btnBrowse.MinimumSize = New-Object System.Drawing.Size(116, 30)
 $btnBrowse.FlatStyle = "Flat"; $btnBrowse.BackColor = $cRock; $btnBrowse.ForeColor = $cBone; $btnBrowse.FlatAppearance.BorderSize = 0
 $btnBrowse.add_Click({ $d = New-Object System.Windows.Forms.FolderBrowserDialog; if ($d.ShowDialog() -eq "OK") { $tbDir.Text = $d.SelectedPath } })
-$form.Controls.Add($btnBrowse); $y += 46
+$form.Controls.Add($btnBrowse); $y += 50
 
 # access mode
 Add-Section "HOW TO REACH IT"
 $grp = New-Object System.Windows.Forms.GroupBox
-$grp.Text = ""; $grp.ForeColor = $cBone; $grp.Location = New-Object System.Drawing.Point($LEFT, $y); $grp.Size = New-Object System.Drawing.Size($W, 104)
-$rbTail = New-Object System.Windows.Forms.RadioButton; $rbTail.Text = "Phone over Tailscale (recommended)"; $rbTail.ForeColor = $cBone; $rbTail.Location = New-Object System.Drawing.Point(18, 18); $rbTail.AutoSize = $true; $rbTail.Checked = $true
-$rbOog = New-Object System.Windows.Forms.RadioButton; $rbOog.Text = "Local on this PC at https://oog.dev"; $rbOog.ForeColor = $cBone; $rbOog.Location = New-Object System.Drawing.Point(18, 46); $rbOog.AutoSize = $true
-$rbLocal = New-Object System.Windows.Forms.RadioButton; $rbLocal.Text = "Plain http://localhost (quick test)"; $rbLocal.ForeColor = $cBone; $rbLocal.Location = New-Object System.Drawing.Point(18, 74); $rbLocal.AutoSize = $true
-$grp.Controls.AddRange(@($rbTail, $rbOog, $rbLocal)); $form.Controls.Add($grp); $y += 116
+$grp.Text = ""; $grp.ForeColor = $cBone; $grp.Location = New-Object System.Drawing.Point($LEFT, $y); $grp.Size = New-Object System.Drawing.Size($W, 128)
+$rbTail = New-Object System.Windows.Forms.RadioButton; $rbTail.Text = "Phone over Tailscale (recommended)"; $rbTail.ForeColor = $cBone; $rbTail.Location = New-Object System.Drawing.Point(18, 22); $rbTail.AutoSize = $true; $rbTail.Checked = $true
+$rbOog = New-Object System.Windows.Forms.RadioButton; $rbOog.Text = "Local on this PC at https://oog.dev"; $rbOog.ForeColor = $cBone; $rbOog.Location = New-Object System.Drawing.Point(18, 56); $rbOog.AutoSize = $true
+$rbLocal = New-Object System.Windows.Forms.RadioButton; $rbLocal.Text = "Plain http://localhost (quick test)"; $rbLocal.ForeColor = $cBone; $rbLocal.Location = New-Object System.Drawing.Point(18, 90); $rbLocal.AutoSize = $true
+$grp.Controls.AddRange(@($rbTail, $rbOog, $rbLocal)); $form.Controls.Add($grp); $y += 140
 
 # tailnet hostname
 $lblHost = Add-Label "Tailnet hostname (auto-detected; edit if blank):"
