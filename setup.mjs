@@ -50,7 +50,9 @@ async function main() {
   if (ver.status === 0) {
     const where = run(isWin ? "where" : "which", ["claude"]);
     const found = (where.stdout || "").split(/\r?\n/).map(s => s.trim()).filter(Boolean);
-    const exe = found.find(f => /\.exe$/i.test(f)) || found[0];
+    // prefer an executable wrapper (.exe/.cmd/.bat); never the extensionless npm shim
+    // (a bash script Windows can't exec directly). Fall back to bare "claude" (PATH-resolved at runtime).
+    const exe = found.find(f => /\.(exe|cmd|bat)$/i.test(f)) || (isWin ? "claude" : found[0]);
     if (exe) claudeBin = exe;
     ok(`found: ${(ver.stdout || "").trim() || "claude"}  ${C.d}(${claudeBin})${C.x}`);
   } else {
@@ -179,9 +181,13 @@ async function main() {
   // 8) startup task
   head("Always-on (optional)");
   if (isWin && await yes("Create a Windows startup task so the bridge runs at log on?", false)) {
-    const psCmd = `powershell -ExecutionPolicy Bypass -File "${join(ROOT, "scripts", "start-bridge.ps1")}"`;
-    const reg = run("schtasks", ["/Create", "/TN", "oog.dev-bridge", "/TR", psCmd, "/SC", "ONLOGON", "/F"], { stdio: "inherit" });
-    reg.status === 0 ? ok("startup task 'oog.dev-bridge' created") : warn("couldn't register the task (try an elevated terminal); you can run scripts\\start-bridge.ps1 manually.");
+    // /TR is one command string. Pass it as a single arg with shell:false so the shell can't
+    // split "powershell -ExecutionPolicy …" into separate schtasks args (the original bug).
+    // shell:false lets Node quote the arg for CreateProcess; the inner path stays quoted for spaces.
+    const ps1 = join(ROOT, "scripts", "start-bridge.ps1");
+    const tr = `powershell -ExecutionPolicy Bypass -WindowStyle Hidden -File "${ps1}"`;
+    const reg = run("schtasks", ["/Create", "/TN", "oog.dev-bridge", "/TR", tr, "/SC", "ONLOGON", "/F"], { stdio: "inherit", shell: false });
+    reg.status === 0 ? ok("startup task 'oog.dev-bridge' created") : warn("couldn't register the task — re-run setup from an elevated (Administrator) terminal, or run scripts\\start-bridge.ps1 manually.");
   }
 
   // done
