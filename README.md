@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="public/assets/claude-base.png" width="120" alt="oog caveman">
+<img src="public/assets/oog-hero.png" width="160" alt="oog caveman">
 
 # oog.dev 🦴
 
