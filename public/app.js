@@ -43,6 +43,28 @@
   function setAmbient(m){ ambientMood = m; clearTimeout(moodT); if (!permAlert) setMoodClass(m); }
   function flashMood(m, ms = 450){ if (reduce || permAlert) return; setMoodClass(m); clearTimeout(moodT); moodT = setTimeout(() => setMoodClass(ambientMood), ms); }
 
+  // ── caveman speech: a stone-tablet bubble pops from oog with a short grunt ──
+  const SAY = {
+    greet: ['OOGA!', 'ME OOG. YOU TALK.', 'FIRE LIT. WE HUNT BUG.', 'WELCOME, BIG BRAIN.'],
+    send:  ['OOG HEAR YOU.', 'ME LISTEN.', 'OK OK.', 'OOGA. ON IT.'],
+    work:  ['ME THINK…', 'OOG DIG ROCK.', 'BRAIN GO BRRR.', 'ME WORK, YOU WAIT.'],
+    tool:  ['ME SMASH KEYS.', 'CHISEL CHISEL.', 'OOG USE TOOL.', 'ROCK GO CLACK.'],
+    done:  ['OOGA! ME DONE.', 'ROCK SMOOTH NOW.', 'OOG FINISH. GOOD?', 'FIRE STILL HOT.'],
+    error: ['OOG TRIP!', 'ROCK BROKE!', 'OW. BUG BITE.', 'ME NO LIKE RED.'],
+    perm:  ['YOU SURE?', 'ME TOUCH THIS?', 'OOG NEED YES.', 'PUSH STONE.'],
+    allow: ['OOGA! ME GO.', 'YES! SMASH.', 'OOG HAPPY.'],
+    hype:  ['OOGA OOGA!', 'ME ON FIRE!', 'BIG WIN STREAK!'],
+  };
+  let sayT = null, lastSay = 0;
+  function say(key, force){
+    if (reduce) return;
+    const pool = SAY[key], el = $('#oogSay'); if (!pool || !el) return;
+    const now = Date.now(); if (!force && now - lastSay < 2600) return; lastSay = now;
+    el.textContent = pool[Math.floor(Math.random() * pool.length)];
+    el.classList.remove('hidden'); void el.offsetWidth; el.classList.add('show'); talk(900);
+    clearTimeout(sayT); sayT = setTimeout(() => { el.classList.add('hidden'); el.classList.remove('show'); }, 3200);
+  }
+
   // state
   let ws = null, token = localStorage.getItem('oog_token') || '';
   // device pairing: a ?token=… in the URL (from a scanned QR) auto-fills + is stripped from the address bar
@@ -106,7 +128,7 @@
     if (!dirs || !dirs.length) { c.innerHTML = '<span class="muted" style="font-size:15px">Set CODE_ROOT to list repos, or type a path below.</span>'; return; }
     for (const d of dirs) { const chip = el('div', 'chip'); chip.textContent = base(d); chip.title = d; chip.onclick = () => send({ type:'new_session', cwd:d }); c.appendChild(chip); }
   }
-  function openCave(id){ activeId = id; pendingReattach = null; show('chat'); ensureTerm(); term.reset(); resetWall(); hideCmdMenu(); setHeader(sessions.get(id)); renderSnips(); renderQueue(); send({ type:'attach', sessionId:id }); send({ type:'list_commands', sessionId:id }); fitSoon(); flashMood('wave', 1000); }
+  function openCave(id){ activeId = id; pendingReattach = null; show('chat'); ensureTerm(); term.reset(); resetWall(); hideCmdMenu(); setHeader(sessions.get(id)); renderSnips(); renderQueue(); send({ type:'attach', sessionId:id }); send({ type:'list_commands', sessionId:id }); fitSoon(); flashMood('wave', 1000); say('greet'); }
   function setHeader(s){ if (!s) return; $('#hdrName').textContent = s.title; setWorking(false, s.status !== 'running'); $('#hdrTablet').classList.toggle('away', s.status !== 'running'); }
 
   // working / status
@@ -170,9 +192,9 @@
       case 'dir': renderBrowse(m); break;
       case 'file': if ($('#viewer').classList.contains('show') && m.path === viewerPath) $('#viewerBody').textContent = m.content || '(empty)'; break;
       case 'state': if (m.sessionId === activeId) {
-        if (m.busy) { if (!workStart) workStart = Date.now(); }
+        if (m.busy) { if (!workStart) { workStart = Date.now(); say('work'); } }
         setWorking(!!m.busy);
-        if (!m.busy) { const long = workStart && (Date.now() - workStart > 6000); workStart = 0; flushQueue(); if (long) flashMood('cheer', 700); }
+        if (!m.busy) { const long = workStart && (Date.now() - workStart > 6000); workStart = 0; flushQueue(); if (long) { flashMood('cheer', 700); say('done'); } }
       } break;
       case 'session_started': sessions.set(m.sessionId, { id:m.sessionId, cwd:m.cwd, title:m.title, status:'running' }); renderCaves(); break;
       case 'session_closed': { const s = sessions.get(m.sessionId); if (s) s.status = 'exited'; renderCaves(); if (m.sessionId === activeId) setHeader(sessions.get(activeId)); break; }
@@ -190,9 +212,9 @@
         if (!currentPermId) detectPermission(wallBuf); break;
       case 'error':
         if (m.sessionId && m.sessionId !== activeId) break;
-        if (term) term.write(`\r\n\x1b[31m⚠ ${String(m.message || '').replace(/[\r\n]+/g, ' ')}\x1b[0m\r\n`); flashMood('error', 800); break;
+        if (term) term.write(`\r\n\x1b[31m⚠ ${String(m.message || '').replace(/[\r\n]+/g, ' ')}\x1b[0m\r\n`); flashMood('error', 800); say('error', true); break;
       // terminal shows these; the caveman just reacts:
-      case 'tool_use': if (!m.sessionId || m.sessionId === activeId) flashMood('tool', 320); break;
+      case 'tool_use': if (!m.sessionId || m.sessionId === activeId) { flashMood('tool', 320); if (Math.random() < 0.34) say('tool'); } break;
       case 'assistant': if (!m.sessionId || m.sessionId === activeId) talk(Math.min(2600, 700 + (m.text || '').length * 10)); break;
     }
   }
@@ -222,7 +244,7 @@
     $('#choiceQ').innerHTML = 'CLAUDE ASK SOMETHING. ME ANSWER:';
     $('#choiceRaw').textContent = tail.split('\n').slice(-8).join('\n').trim();
     relabel('keys'); $('#choice').classList.add('show');
-    permAlert = true; setMoodClass('alert');
+    permAlert = true; setMoodClass('alert'); say('perm', true);
   }
   function showPerm(m){
     currentPermId = m.id; $('#choice').dataset.mode = 'hook';
@@ -230,7 +252,7 @@
     $('#choiceQ').innerHTML = `CLAUDE WANT USE <b>${esc(m.tool)}</b>${detail ? ` — <code>${esc(short(detail))}</code>` : ''}. ME DO?`;
     $('#choiceRaw').textContent = oneline(m.input);
     relabel('hook'); $('#choice').classList.add('show');
-    permAlert = true; setMoodClass('alert');   // caveman holds up the stones
+    permAlert = true; setMoodClass('alert'); say('perm', true);   // caveman holds up the stones
   }
   function relabel(mode){
     const [b1, b2, b3] = document.querySelectorAll('#choice [data-key]');
@@ -250,7 +272,7 @@
   $('#closeBtn').onclick = () => { if (activeId && confirm('Put out this fire? (ends the session)')) { send({ type:'close_session', sessionId:activeId }); activeId = null; show('caves'); } };
 
   const input = $('#input');
-  function doSend(text){ send({ type:'prompt', sessionId:activeId, text }); ping(); flashMood('send', 360); if (term) term.focus(); }
+  function doSend(text){ send({ type:'prompt', sessionId:activeId, text }); ping(); flashMood('send', 360); say('send'); if (term) term.focus(); }
   function sendText(text){ text = (text || '').trim(); if (!text || !activeId) return; if (working) enqueue(activeId, text); else doSend(text); }
   function sendPrompt(){ const t = input.value; if (!t.trim() || !activeId) return; input.value = ''; input.style.height = 'auto'; hideCmdMenu(); sendText(t); }
   $('#sendBtn').onclick = sendPrompt;
@@ -325,9 +347,9 @@
     else if (activeId) { send({ type:'key', sessionId:activeId, key:b.dataset.key }); send({ type:'key', sessionId:activeId, key:'enter' }); }
     closeChoice();
     if (allow) {
-      flashMood('pop', 460);   // caveman fist-pump
+      flashMood('pop', 460); say('allow');   // caveman fist-pump
       allowStreak++; clearTimeout(streakT); streakT = setTimeout(() => { allowStreak = 0; }, 12000);
-      if (allowStreak >= 3) flashMood('hype', 2400);   // on a roll → hyped bob
+      if (allowStreak >= 3) { flashMood('hype', 2400); say('hype', true); }   // on a roll → hyped
     } else { allowStreak = 0; }
   }));
   $('#choiceDismiss').onclick = () => { if (currentPermId) { send({ type:'permission', id: currentPermId, decision:'deny' }); currentPermId = null; } closeChoice(); };

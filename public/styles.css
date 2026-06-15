@@ -157,6 +157,17 @@ h1.head{ font-family:var(--font-head); font-weight:400; font-size:30px; color:va
 #qrBox{ display:flex; justify-content:center; padding:10px; background:#fff; border-radius:8px; width:max-content; margin:0 auto; }
 #qrBox img, #qrBox canvas, #qrBox svg{ display:block; width:200px; height:200px; image-rendering:pixelated; }
 
+/* caveman speech bubble (pops from the header caveman) */
+#screen-chat.active{ position:relative; }
+.oog-say{ position:absolute; top:52px; left:14px; max-width:74%; z-index:6; pointer-events:none;
+  background:linear-gradient(160deg,#4a3526,#281b10); color:var(--bone); border:2px solid var(--rock); border-radius:9px;
+  box-shadow:var(--chisel), var(--firelow); padding:6px 11px; font-family:var(--font-voice); font-size:16px; line-height:1.2; }
+.oog-say::before{ content:""; position:absolute; top:-9px; left:16px; border:7px solid transparent; border-bottom-color:var(--rock); }
+.oog-say.hidden{ display:none; }
+.oog-say.show{ animation:oog-saypop .24s ease-out; }
+@keyframes oog-saypop{ 0%{ transform:translateY(-5px) scale(.88); opacity:0 } 100%{ transform:none; opacity:1 } }
+@media (prefers-reduced-motion: reduce){ .oog-say.show{ animation:none; } }
+
 /* live terminal (xterm.js) — the single surface */
 #term{ min-height:0; min-width:0; max-width:100%; overflow:hidden; background:#15110a; padding:6px 8px 2px; }
 #term .xterm{ height:100%; width:100%; padding:0; }
