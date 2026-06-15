@@ -62,7 +62,7 @@
     const now = Date.now(); if (!force && now - lastSay < 2600) return; lastSay = now;
     el.textContent = pool[Math.floor(Math.random() * pool.length)];
     el.classList.remove('hidden'); void el.offsetWidth; el.classList.add('show'); talk(900);
-    clearTimeout(sayT); sayT = setTimeout(() => { el.classList.add('hidden'); el.classList.remove('show'); }, 3200);
+    clearTimeout(sayT); sayT = setTimeout(() => { el.classList.add('hidden'); el.classList.remove('show'); }, 2400);
   }
 
   // state
