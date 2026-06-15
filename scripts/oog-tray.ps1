@@ -8,19 +8,23 @@ Add-Type -AssemblyName System.Drawing
 $root = Split-Path $PSScriptRoot -Parent
 Set-Location $root
 
-# read URL + token from .env (for the menu actions)
-$envMap = @{}
-if (Test-Path (Join-Path $root ".env")) {
-  foreach ($line in Get-Content (Join-Path $root ".env")) {
-    if ($line -match '^\s*([^#=][^=]*)=(.*)$') { $envMap[$matches[1].Trim()] = $matches[2].Trim().Trim('"') }
+# read a value from .env FRESH each call — never cache, or "Copy token" goes stale after a re-setup
+function Get-EnvVal($key) {
+  $f = Join-Path $root ".env"
+  if (-not (Test-Path $f)) { return $null }
+  $val = $null
+  foreach ($line in Get-Content $f) {
+    if ($line -match '^\s*([^#=][^=]*)=(.*)$' -and $matches[1].Trim() -eq $key) { $val = $matches[2].Trim().Trim('"') }
   }
+  return $val
 }
-$url = $envMap["OOG_URL"]
-$token = $envMap["AUTH_TOKEN"]
 
 # start the bridge hidden; track the process so we can kill its whole tree
 $script:proc = $null
 function Start-Bridge {
+  # free the port so THIS bridge (current .env, current token) wins over any stale instance
+  $port = Get-EnvVal "PORT"; if (-not $port) { $port = "8765" }
+  try { Get-NetTCPConnection -LocalPort ([int]$port) -State Listen -ErrorAction SilentlyContinue | ForEach-Object { Stop-Process -Id $_.OwningProcess -Force -ErrorAction SilentlyContinue } } catch {}
   $psi = New-Object System.Diagnostics.ProcessStartInfo
   $psi.FileName = "cmd.exe"
   $psi.Arguments = "/c npm start"
@@ -47,6 +51,7 @@ $ni.ShowBalloonTip(3000, "oog.dev", "Bridge running. OOGA.", [System.Windows.For
 
 # pop a window with a scannable pairing QR (URL + token), generated via scripts\qr-matrix.mjs
 function Show-QR {
+  $url = Get-EnvVal "OOG_URL"; $token = Get-EnvVal "AUTH_TOKEN"
   if (-not $url) { [System.Windows.Forms.MessageBox]::Show("No OOG_URL in .env - re-run setup to enable the pairing QR.", "oog.dev", "OK", "Information") | Out-Null; return }
   $pair = $url + "/?token=" + [System.Uri]::EscapeDataString($token)
   $raw = ""
@@ -72,18 +77,18 @@ function Show-QR {
 
 $menu = New-Object System.Windows.Forms.ContextMenuStrip
 $mOpen = $menu.Items.Add("Open in browser")
-$mOpen.add_Click({ if ($url) { Start-Process $url } })
+$mOpen.add_Click({ $u = Get-EnvVal "OOG_URL"; if ($u) { Start-Process $u } })
 $mQR = $menu.Items.Add("Show pairing QR")
 $mQR.add_Click({ Show-QR })
 $mTok = $menu.Items.Add("Copy auth token")
-$mTok.add_Click({ if ($token) { Set-Clipboard -Value $token; $ni.ShowBalloonTip(2000, "oog.dev", "Token copied to clipboard", [System.Windows.Forms.ToolTipIcon]::Info) } })
+$mTok.add_Click({ $t = Get-EnvVal "AUTH_TOKEN"; if ($t) { Set-Clipboard -Value $t; $ni.ShowBalloonTip(2000, "oog.dev", "Token copied to clipboard", [System.Windows.Forms.ToolTipIcon]::Info) } })
 $mRestart = $menu.Items.Add("Restart bridge")
 $mRestart.add_Click({ Stop-Bridge; Start-Sleep -Milliseconds 600; Start-Bridge; $ni.ShowBalloonTip(2000, "oog.dev", "Bridge restarted", [System.Windows.Forms.ToolTipIcon]::Info) })
 [void]$menu.Items.Add("-")
 $mQuit = $menu.Items.Add("Quit")
 $mQuit.add_Click({ Stop-Bridge; $ni.Visible = $false; $ni.Dispose(); [System.Windows.Forms.Application]::Exit() })
 $ni.ContextMenuStrip = $menu
-$ni.add_MouseDoubleClick({ if ($url) { Start-Process $url } })
+$ni.add_MouseDoubleClick({ $u = Get-EnvVal "OOG_URL"; if ($u) { Start-Process $u } })
 
 # watchdog: relaunch the bridge if it dies
 $timer = New-Object System.Windows.Forms.Timer
