@@ -60,100 +60,114 @@ function Get-TailnetName {
   try { $j = (& tailscale status --json | Out-String | ConvertFrom-Json); return ($j.Self.DNSName -replace '\.$', '') } catch { return "" }
 }
 
+$LEFT = 32; $W = 532
 $form = New-Object System.Windows.Forms.Form
 $form.AutoScaleDimensions = New-Object System.Drawing.SizeF(96, 96)
 $form.AutoScaleMode = [System.Windows.Forms.AutoScaleMode]::Dpi
 $form.Text = "oog.dev setup"
-$form.ClientSize = New-Object System.Drawing.Size(540, 660)
+$form.ClientSize = New-Object System.Drawing.Size(596, 710)
 $form.StartPosition = "CenterScreen"
 $form.FormBorderStyle = "FixedDialog"; $form.MaximizeBox = $false
-$form.BackColor = $cBg; $form.ForeColor = $cBone; $form.Font = $fBody
+$form.AutoScroll = $true   # if DPI scaling makes it taller than the screen, scroll instead of clipping
+$form.BackColor = $cBg; $form.ForeColor = $cBone; $form.Font = $fBody; $form.Padding = New-Object System.Windows.Forms.Padding(0, 0, 0, 12)
 $ico = Join-Path $root "public\assets\oog.ico"
 if (Test-Path $ico) { try { $form.Icon = New-Object System.Drawing.Icon($ico) } catch {} }
 
 # header: caveman + title
 $pic = New-Object System.Windows.Forms.PictureBox
-$pic.SizeMode = "Zoom"; $pic.Size = New-Object System.Drawing.Size(64, 76); $pic.Location = New-Object System.Drawing.Point(20, 16)
+$pic.SizeMode = "Zoom"; $pic.Size = New-Object System.Drawing.Size(78, 92); $pic.Location = New-Object System.Drawing.Point($LEFT, 24)
 $hero = Join-Path $root "public\assets\oog-hero.png"
 if (Test-Path $hero) { try { $pic.Image = [System.Drawing.Image]::FromFile($hero) } catch {} }
 $form.Controls.Add($pic)
 $title = New-Object System.Windows.Forms.Label
-$title.Text = "oog.dev"; $title.Font = $fHead; $title.ForeColor = $cTorch; $title.AutoSize = $true; $title.Location = New-Object System.Drawing.Point(96, 24)
+$title.Text = "oog.dev"; $title.Font = (New-Object System.Drawing.Font("Segoe UI", 18, [System.Drawing.FontStyle]::Bold)); $title.ForeColor = $cTorch; $title.AutoSize = $true; $title.Location = New-Object System.Drawing.Point(128, 36)
 $form.Controls.Add($title)
 $sub = New-Object System.Windows.Forms.Label
-$sub.Text = "Host Claude Code here, drive it from your phone."; $sub.AutoSize = $true; $sub.ForeColor = $cBone; $sub.Location = New-Object System.Drawing.Point(98, 56)
+$sub.Text = "Host Claude Code here, drive it from your phone."; $sub.AutoSize = $true; $sub.ForeColor = $cBone; $sub.Location = New-Object System.Drawing.Point(130, 78)
 $form.Controls.Add($sub)
 
-$y = 104
+$y = 138
+function Add-Section($text) {
+  $script:y += 16
+  $l = New-Object System.Windows.Forms.Label
+  $l.Text = $text; $l.AutoSize = $true; $l.ForeColor = $cTorch
+  $l.Font = New-Object System.Drawing.Font("Segoe UI", 8.5, [System.Drawing.FontStyle]::Bold)
+  $l.Location = New-Object System.Drawing.Point($LEFT, $script:y)
+  $form.Controls.Add($l); $script:y += 28
+}
 function Add-Label($text) {
   $l = New-Object System.Windows.Forms.Label
-  $l.Text = $text; $l.AutoSize = $true; $l.ForeColor = $cBone; $l.Location = New-Object System.Drawing.Point(20, $script:y)
-  $form.Controls.Add($l); $script:y += 22; return $l
+  $l.Text = $text; $l.AutoSize = $true; $l.ForeColor = $cBone; $l.Location = New-Object System.Drawing.Point($LEFT, $script:y)
+  $form.Controls.Add($l); $script:y += 24; return $l
 }
 function Style-Text($tb) { $tb.BackColor = $cPanel; $tb.ForeColor = $cBone; $tb.BorderStyle = "FixedSingle" }
 
 # token
+Add-Section "AUTH TOKEN"
 $cbGen = New-Object System.Windows.Forms.CheckBox
 $cbGen.Text = "Generate a strong token for me"; $cbGen.Checked = $true; $cbGen.AutoSize = $true; $cbGen.ForeColor = $cBone
-$cbGen.Location = New-Object System.Drawing.Point(20, $y); $form.Controls.Add($cbGen); $y += 26
+$cbGen.Location = New-Object System.Drawing.Point($LEFT, $y); $form.Controls.Add($cbGen); $y += 30
 $tbToken = New-Object System.Windows.Forms.TextBox
-$tbToken.Location = New-Object System.Drawing.Point(20, $y); $tbToken.Size = New-Object System.Drawing.Size(496, 24); Style-Text $tbToken
+$tbToken.Location = New-Object System.Drawing.Point($LEFT, $y); $tbToken.Size = New-Object System.Drawing.Size($W, 24); Style-Text $tbToken
 $tbToken.Enabled = $false; try { $tbToken.PlaceholderText = "...or paste your own token" } catch {}
-$form.Controls.Add($tbToken); $y += 36
+$form.Controls.Add($tbToken); $y += 42
 $cbGen.add_CheckedChanged({ $tbToken.Enabled = -not $cbGen.Checked })
 
 # code folder
+Add-Section "YOUR CODE"
 Add-Label "Folder that holds your repos (the cave picker):" | Out-Null
 $tbDir = New-Object System.Windows.Forms.TextBox
 $def = Join-Path $env:USERPROFILE ".code"; if (-not (Test-Path $def)) { $def = $env:USERPROFILE }
-$tbDir.Text = $def; $tbDir.Location = New-Object System.Drawing.Point(20, $y); $tbDir.Size = New-Object System.Drawing.Size(406, 24); Style-Text $tbDir
+$tbDir.Text = $def; $tbDir.Location = New-Object System.Drawing.Point($LEFT, $y); $tbDir.Size = New-Object System.Drawing.Size(($W - 96), 24); Style-Text $tbDir
 $form.Controls.Add($tbDir)
 $btnBrowse = New-Object System.Windows.Forms.Button
-$btnBrowse.Text = "Browse..."; $btnBrowse.Location = New-Object System.Drawing.Point(432, ($y - 1)); $btnBrowse.Size = New-Object System.Drawing.Size(84, 26)
+$btnBrowse.Text = "Browse..."; $btnBrowse.Location = New-Object System.Drawing.Point(($LEFT + $W - 88), ($y - 1)); $btnBrowse.Size = New-Object System.Drawing.Size(88, 26)
 $btnBrowse.FlatStyle = "Flat"; $btnBrowse.BackColor = $cRock; $btnBrowse.ForeColor = $cBone; $btnBrowse.FlatAppearance.BorderSize = 0
 $btnBrowse.add_Click({ $d = New-Object System.Windows.Forms.FolderBrowserDialog; if ($d.ShowDialog() -eq "OK") { $tbDir.Text = $d.SelectedPath } })
-$form.Controls.Add($btnBrowse); $y += 38
+$form.Controls.Add($btnBrowse); $y += 46
 
 # access mode
+Add-Section "HOW TO REACH IT"
 $grp = New-Object System.Windows.Forms.GroupBox
-$grp.Text = "How will you reach it?"; $grp.ForeColor = $cTorch; $grp.Location = New-Object System.Drawing.Point(20, $y); $grp.Size = New-Object System.Drawing.Size(496, 98)
-$rbTail = New-Object System.Windows.Forms.RadioButton; $rbTail.Text = "Phone over Tailscale (recommended)"; $rbTail.ForeColor = $cBone; $rbTail.Location = New-Object System.Drawing.Point(14, 22); $rbTail.AutoSize = $true; $rbTail.Checked = $true
-$rbOog = New-Object System.Windows.Forms.RadioButton; $rbOog.Text = "Local on this PC at https://oog.dev"; $rbOog.ForeColor = $cBone; $rbOog.Location = New-Object System.Drawing.Point(14, 46); $rbOog.AutoSize = $true
-$rbLocal = New-Object System.Windows.Forms.RadioButton; $rbLocal.Text = "Plain http://localhost (quick test)"; $rbLocal.ForeColor = $cBone; $rbLocal.Location = New-Object System.Drawing.Point(14, 70); $rbLocal.AutoSize = $true
-$grp.Controls.AddRange(@($rbTail, $rbOog, $rbLocal)); $form.Controls.Add($grp); $y += 106
+$grp.Text = ""; $grp.ForeColor = $cBone; $grp.Location = New-Object System.Drawing.Point($LEFT, $y); $grp.Size = New-Object System.Drawing.Size($W, 104)
+$rbTail = New-Object System.Windows.Forms.RadioButton; $rbTail.Text = "Phone over Tailscale (recommended)"; $rbTail.ForeColor = $cBone; $rbTail.Location = New-Object System.Drawing.Point(18, 18); $rbTail.AutoSize = $true; $rbTail.Checked = $true
+$rbOog = New-Object System.Windows.Forms.RadioButton; $rbOog.Text = "Local on this PC at https://oog.dev"; $rbOog.ForeColor = $cBone; $rbOog.Location = New-Object System.Drawing.Point(18, 46); $rbOog.AutoSize = $true
+$rbLocal = New-Object System.Windows.Forms.RadioButton; $rbLocal.Text = "Plain http://localhost (quick test)"; $rbLocal.ForeColor = $cBone; $rbLocal.Location = New-Object System.Drawing.Point(18, 74); $rbLocal.AutoSize = $true
+$grp.Controls.AddRange(@($rbTail, $rbOog, $rbLocal)); $form.Controls.Add($grp); $y += 116
 
 # tailnet hostname
 $lblHost = Add-Label "Tailnet hostname (auto-detected; edit if blank):"
 $tbHost = New-Object System.Windows.Forms.TextBox
-$tbHost.Location = New-Object System.Drawing.Point(20, $y); $tbHost.Size = New-Object System.Drawing.Size(496, 24); Style-Text $tbHost
+$tbHost.Location = New-Object System.Drawing.Point($LEFT, $y); $tbHost.Size = New-Object System.Drawing.Size($W, 24); Style-Text $tbHost
 $tbHost.Text = (Get-TailnetName)
-$form.Controls.Add($tbHost); $y += 34
+$form.Controls.Add($tbHost); $y += 40
 $toggleHost = { $vis = $rbTail.Checked; $lblHost.Visible = $vis; $tbHost.Visible = $vis }
 $rbTail.add_CheckedChanged($toggleHost); $rbOog.add_CheckedChanged($toggleHost); $rbLocal.add_CheckedChanged($toggleHost)
 
 # options
+Add-Section "OPTIONS"
 function Add-Check($text, $checked) {
   $cb = New-Object System.Windows.Forms.CheckBox
-  $cb.Text = $text; $cb.Checked = $checked; $cb.AutoSize = $true; $cb.ForeColor = $cBone; $cb.Location = New-Object System.Drawing.Point(20, $script:y)
-  $form.Controls.Add($cb); $script:y += 24; return $cb
+  $cb.Text = $text; $cb.Checked = $checked; $cb.AutoSize = $true; $cb.ForeColor = $cBone; $cb.Location = New-Object System.Drawing.Point($LEFT, $script:y)
+  $form.Controls.Add($cb); $script:y += 28; return $cb
 }
 $cbApprove = Add-Check "Phone approvals (Allow/Deny on phone)" $true
 $cbTray = Add-Check "Run in system tray at log on (no terminal)" $true
 $cbStart = Add-Check "Start oog now when setup finishes" $true
 $cbResume = Add-Check "Auto-resume caves on start" $false
-$y += 8
+$y += 18
 
 # set up button
 $btnGo = New-Object System.Windows.Forms.Button
-$btnGo.Text = "Set up oog"; $btnGo.Location = New-Object System.Drawing.Point(20, $y); $btnGo.Size = New-Object System.Drawing.Size(496, 38)
+$btnGo.Text = "Set up oog"; $btnGo.Location = New-Object System.Drawing.Point($LEFT, $y); $btnGo.Size = New-Object System.Drawing.Size($W, 44)
 $btnGo.FlatStyle = "Flat"; $btnGo.BackColor = $cEmber; $btnGo.ForeColor = [System.Drawing.Color]::FromArgb(42, 22, 7); $btnGo.FlatAppearance.BorderSize = 0
 $btnGo.Font = New-Object System.Drawing.Font("Segoe UI", 11, [System.Drawing.FontStyle]::Bold)
-$form.Controls.Add($btnGo); $y += 46
+$form.Controls.Add($btnGo); $y += 54
 
 # output log
 $out = New-Object System.Windows.Forms.TextBox
 $out.Multiline = $true; $out.ScrollBars = "Vertical"; $out.ReadOnly = $true
-$out.Location = New-Object System.Drawing.Point(20, $y); $out.Size = New-Object System.Drawing.Size(496, 120)
+$out.Location = New-Object System.Drawing.Point($LEFT, $y); $out.Size = New-Object System.Drawing.Size($W, 96)
 $out.BackColor = $cPanel; $out.ForeColor = $cBone; $out.BorderStyle = "FixedSingle"
 $out.Font = New-Object System.Drawing.Font("Consolas", 9)
 $form.Controls.Add($out)
