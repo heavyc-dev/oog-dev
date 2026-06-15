@@ -25,16 +25,19 @@ Each cave is the real `claude` running under a pseudo-terminal — so it bills e
 
 ---
 
-## 🚀 Install (2 commands)
+## 🚀 Install
 
 > **Need first:** [Node 20+](https://nodejs.org) and [Claude Code](https://claude.com/claude-code), installed & logged in.
 
+**Terminal (any OS):**
 ```bash
 npm run setup     # wizard: token, code folder, access mode, cert/Tailscale, deps, .env
-npm start         # prints your URL + token
+npm start         # prints your URL + a scan-to-connect QR
 ```
 
-That's it. The wizard generates a strong token, makes a cert (or sets up Tailscale), installs deps, and writes `.env`. Open the printed URL on your phone, paste the token, tap **new cave**, pick a folder, and talk.
+**Windows (clickable):** double-click **`oog-setup.cmd`** — the same wizard in a window. Pick options → **Set up oog**. Tick **Install** to add it to the Start Menu + run at log on (appears in Windows **Settings → Apps**). Want a real `.exe`? `npm run build:exe` → `dist\oog-setup.exe`.
+
+The wizard generates a strong token, sets up Tailscale (or a local cert), installs deps, writes `.env`, and prints a **QR** — scan it on your phone to open already signed in. (Or tap **new cave**, pick a folder, and talk.)
 
 ---
 
@@ -49,7 +52,9 @@ That's it. The wizard generates a strong token, makes a cert (or sets up Tailsca
 | 🔍 **Search · 🔠 zoom · ⇧Tab** | Find in scrollback, resize text, send back-tab to toggle modes |
 | 📷 **Photo · 🎤 voice** | Send a picture into the chat; dictate prompts |
 | 🔔 **Push** | Buzz when Claude needs approval, finishes, or errors |
-| 📲 **QR pairing** | ⚙ Settings shows a QR — scan to open on your phone, token baked in |
+| 📲 **Scan to connect** | A QR (terminal, tray, or ⚙ Settings) opens the app on your phone, signed in |
+| 🦴 **System tray** | Windows tray app (no terminal): Open · Show pairing QR · Copy token · Restart · Quit |
+| 📥 **Install as an app** | Start Menu + Startup toggle + Installed-apps entry; 📲 button does Add-to-Home-Screen |
 | ✅ **Phone approvals** | Each tool that needs permission pops a clean Allow / Deny |
 
 ---
@@ -72,6 +77,8 @@ That's it. The wizard generates a strong token, makes a cert (or sets up Tailsca
 | **oog.dev** *(this PC)* | `https://oog.dev` | local-trusted cert via `mkcert` + hosts entry; `:8443` or `:443` (admin) |
 | **Plain HTTP** *(test)* | `http://localhost:8765` | quick local check; no push |
 
+> ⚠️ **Tailscale ACL — the #1 gotcha.** Your tailnet's access rules must allow **`tcp:443`** between your devices. In the Tailscale admin console → **Access Controls**, the `ip` list for your devices must include `"tcp:443"` (or `"*"`). The **default** ACL allows everything; a **locked-down** ACL makes the phone *silently* fail — `tailscale ping` works but the page never loads. If the phone won't connect, check this first.
+
 ---
 
 <details>
@@ -90,8 +97,9 @@ All optional except `AUTH_TOKEN` (the wizard writes them):
 | `ALLOWED_ORIGINS` | — | comma-list of web origins allowed to connect |
 | `CC_BRIDGE_HOOK` | `1` | phone approval hook (`0` = fall back to in-terminal prompts) |
 | `RELIGHT_ON_START` | `0` | auto-resume known caves on boot |
+| `OOG_URL` | — | your public URL; lets `npm start` / the tray print a scan-to-connect QR |
 
-**Always-on (Windows):** the wizard can register a `oog.dev-bridge` logon task, or point Task Scheduler at `scripts\start-bridge.ps1` (**At log on**). Config comes from `.env`, so the launcher is just `npm start`.
+**Always-on (Windows):** `npm run install:app` (or the GUI's **Install** checkbox) registers oog per-user — a **Start Menu** entry, a **Startup** shortcut (toggle in *Settings → Apps → Startup*), and an **Uninstall** entry (*Settings → Apps → Installed apps*). It runs windowless in the **system tray** (caveman icon). Remove with `npm run uninstall:app`. No admin needed. (Plain headless launcher: `scripts\start-bridge.ps1` → just `npm start`.)
 
 </details>
 
@@ -111,6 +119,10 @@ The phone renders the raw PTY in xterm.js; your prompts are delivered as a brack
 <details>
 <summary><b>🩺 Troubleshooting</b></summary>
 
+- **Phone won't connect over Tailscale (page just spins / "can't open"):** almost always the **Tailscale ACL** — it must allow `tcp:443` between your devices (see the callout above). `tailscale ping` working does *not* mean the data port is open.
+- **Phone shows a blank token prompt after scanning:** the phone is running a cached old `app.js`. Clear the site's data (iOS: *Settings → Safari → Clear History and Website Data*) and reopen, or use the **📲 Install** button so the home-screen icon launches signed in.
+- **`oog-setup.exe` says "couldn't find setup.mjs":** keep the exe inside the repo (its `dist\` folder) — it runs the project next to it.
+- **Server using an old token after re-running setup:** restart the bridge/tray so it reloads `.env`.
 - **`node-pty` build fails (Windows):** swap the dep for `@homebridge/node-pty-prebuilt-multiarch` (same API) and update the import in `server.ts`.
 - **`transcript not found`:** the cave's folder had no Claude session yet — send a first prompt; it attaches once Claude writes its transcript.
 - **Port in use:** set `PORT` in `.env`, or stop the other process.
@@ -122,17 +134,22 @@ The phone renders the raw PTY in xterm.js; your prompts are delivered as a brack
 <summary><b>📁 Project layout</b></summary>
 
 ```
-setup.mjs                  install wizard (zero-dep)
-server.ts                  the bridge — PTY + transcript tail + http/ws + TLS + hook + scanner
-transcript.mjs             JSONL → events parser (unit-tested)
-hooks/permission-hook.mjs  PreToolUse hook → phone approval
-public/                    the PWA — index.html, app.js, styles.css, sw.js, assets/
-public/vendor/             xterm.js + addons + qrcode (committed; client runtime)
-scripts/start-bridge.ps1   Windows launcher
-test/                      parser tests  ·  npm test
+setup.mjs                   install wizard (zero-dep; non-interactive mode for the GUI)
+server.ts                   the bridge — PTY + transcript tail + http/ws + TLS + hook + scanner
+transcript.mjs              JSONL → events parser (unit-tested)
+qr-terminal.mjs             scan-to-connect QR renderer (setup + server boot)
+hooks/permission-hook.mjs   PreToolUse hook → phone approval
+public/                     the PWA — index.html, app.js, styles.css, sw.js, manifest, assets/
+public/vendor/              xterm.js + addons + qrcode (committed; client runtime)
+oog-setup.cmd               double-click → the clickable GUI wizard
+scripts/oog-setup-gui.ps1   WinForms setup wizard      ·  build-exe.ps1 → dist\oog-setup.exe
+scripts/oog-tray.ps1        system-tray launcher        ·  qr-matrix.mjs (tray QR)
+scripts/install.ps1         register as a Windows app   ·  uninstall.ps1
+scripts/start-bridge.ps1    plain headless launcher     ·  vendor.mjs (refresh public/vendor)
+test/                       parser tests  ·  npm test
 ```
 
-Dev: `npm test` · `npm run typecheck` · `npm run dev` (watch).
+Dev: `npm test` · `npm run typecheck` · `npm run dev` (watch) · `npm run vendor` (refresh vendored libs).
 
 </details>
 

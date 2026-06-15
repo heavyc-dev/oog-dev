@@ -143,6 +143,10 @@ async function main() {
       log(`Run this once (gives a trusted https URL on your phone):`);
       log(`    ${C.c}tailscale serve --bg --https=443 http://127.0.0.1:8765${C.x}`);
       if (await yes("Run the tailscale serve command now?", false, "OOG_RUN_SERVE")) run("tailscale", ["serve", "--bg", "--https=443", "http://127.0.0.1:8765"], { stdio: "inherit" });
+      warn("IMPORTANT — your tailnet ACL must allow tcp:443 between your devices, or the phone");
+      log(`         silently fails to connect (ping works, page won't load). In the Tailscale admin`);
+      log(`         console → Access Controls, the ${C.b}ip${C.x} for your devices must include ${C.b}"tcp:443"${C.x}`);
+      log(`         (or ${C.b}"*"${C.x}). Default ACLs allow all; a locked-down ACL is the usual culprit.`);
     } else {
       warn("tailscale not found — install Tailscale, then run the serve command from the README.");
     }
