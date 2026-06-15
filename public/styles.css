@@ -180,10 +180,10 @@ h1.head{ font-family:var(--font-head); font-weight:400; font-size:30px; color:va
 
 /* input + stone keys */
 .composer{ padding:10px 12px 14px; background:var(--stone); border-top:2px solid var(--rock); box-shadow:var(--chisel); }
-.keys{ display:flex; flex-wrap:wrap; gap:7px; margin-bottom:9px; }
-.cap{ font-family:var(--font-body); font-size:12px; font-weight:700; color:var(--bone);
-  background:linear-gradient(180deg,#4a3526,#2e2013); border:2px solid var(--rock); border-radius:6px; padding:8px 11px;
-  box-shadow:0 3px 0 #1a1006; min-width:38px; text-align:center; cursor:pointer; }
+.keys{ display:flex; flex-wrap:wrap; gap:5px; margin-bottom:7px; }
+.cap{ font-family:var(--font-body); font-size:11px; font-weight:700; color:var(--bone);
+  background:linear-gradient(180deg,#4a3526,#2e2013); border:1px solid var(--rock); border-radius:5px; padding:4px 7px;
+  box-shadow:0 2px 0 #1a1006; min-width:26px; text-align:center; line-height:1.2; cursor:pointer; }
 .cap:active{ transform:translateY(2px); box-shadow:0 1px 0 #1a1006; }
 .cap.warn{ border-color:var(--danger); color:var(--danger); }
 .inrow{ display:flex; gap:9px; align-items:flex-end; }
@@ -191,6 +191,10 @@ h1.head{ font-family:var(--font-head); font-weight:400; font-size:30px; color:va
   border:2px solid var(--rock); border-radius:9px; padding:11px 13px; resize:none; max-height:120px; min-height:46px; min-width:0; }
 #input:focus{ outline:2px solid var(--torch); outline-offset:1px; }
 #sendBtn{ flex:0 0 auto; }
+/* photo button — stone tile matching the input */
+#camBtn{ flex:0 0 auto; width:46px; min-height:46px; padding:0; font-size:19px; line-height:1; cursor:pointer;
+  background:linear-gradient(180deg,#4a3526,#2e2013); color:var(--bone); border:2px solid var(--rock); border-radius:9px; box-shadow:var(--chisel); }
+#camBtn:active{ transform:translateY(2px); }
 
 /* slash-command autocomplete menu */
 .cmdmenu{ display:flex; flex-direction:column; gap:2px; max-height:42vh; overflow-y:auto; margin-bottom:8px;
