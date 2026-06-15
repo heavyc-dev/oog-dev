@@ -159,10 +159,10 @@ h1.head{ font-family:var(--font-head); font-weight:400; font-size:30px; color:va
 
 /* caveman speech bubble (pops from the header caveman) */
 #screen-chat.active{ position:relative; }
-.oog-say{ position:absolute; top:60px; left:12px; max-width:56%; z-index:6; pointer-events:none;
+.oog-say{ position:absolute; top:60px; left:86px; max-width:52%; z-index:6; pointer-events:none;
   background:linear-gradient(160deg,rgba(74,53,38,.94),rgba(40,27,16,.94)); color:var(--bone); border:1px solid var(--rock); border-radius:8px;
   box-shadow:0 2px 6px rgba(0,0,0,.4); padding:3px 8px; font-family:var(--font-voice); font-size:13px; line-height:1.2; }
-.oog-say::before{ content:""; position:absolute; top:-7px; left:14px; border:5px solid transparent; border-bottom-color:var(--rock); }
+.oog-say::before{ content:""; position:absolute; top:-7px; left:8px; border:5px solid transparent; border-bottom-color:var(--rock); }
 .oog-say.hidden{ display:none; }
 .oog-say.show{ animation:oog-saypop .24s ease-out; }
 @keyframes oog-saypop{ 0%{ transform:translateY(-5px) scale(.88); opacity:0 } 100%{ transform:none; opacity:1 } }
