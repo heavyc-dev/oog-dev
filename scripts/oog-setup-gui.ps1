@@ -6,14 +6,23 @@ Add-Type -AssemblyName System.Windows.Forms
 Add-Type -AssemblyName System.Drawing
 [System.Windows.Forms.Application]::EnableVisualStyles()
 
-# resolve repo root robustly ($PSScriptRoot can be empty depending on launch context)
+# resolve repo root: works as a .ps1 (in scripts/) AND as the built .exe (in dist/).
+# Build candidate roots from every source we can, then pick whichever actually holds setup.mjs.
 $self = $PSCommandPath
 if (-not $self -and $MyInvocation.MyCommand.Path) { $self = $MyInvocation.MyCommand.Path }
-if ($self) { $root = Split-Path -Parent (Split-Path -Parent $self) }
-elseif ($PSScriptRoot) { $root = Split-Path -Parent $PSScriptRoot }
-else { $root = (Get-Location).Path }
-if (-not (Test-Path (Join-Path $root "setup.mjs"))) {
-  [System.Windows.Forms.MessageBox]::Show("Couldn't find setup.mjs. Run from the oog repo (double-click oog-setup.cmd).", "oog.dev setup", "OK", "Error") | Out-Null
+$cands = New-Object System.Collections.Generic.List[string]
+if ($self) { $cands.Add((Split-Path -Parent (Split-Path -Parent $self))) }      # ps1 in scripts\ -> repo root
+if ($PSScriptRoot) { $cands.Add((Split-Path -Parent $PSScriptRoot)) }
+try {
+  $exe = [System.Diagnostics.Process]::GetCurrentProcess().MainModule.FileName    # exe path (or powershell.exe)
+  $exeDir = Split-Path -Parent $exe
+  $cands.Add($exeDir); $cands.Add((Split-Path -Parent $exeDir))                   # exe at root, or in dist\
+} catch {}
+$cands.Add((Get-Location).Path); $cands.Add((Split-Path -Parent (Get-Location).Path))
+$root = $null
+foreach ($c in $cands) { if ($c -and (Test-Path (Join-Path $c "setup.mjs"))) { $root = $c; break } }
+if (-not $root) {
+  [System.Windows.Forms.MessageBox]::Show("Couldn't find setup.mjs. Keep oog-setup.exe inside the oog repo (or its dist\ folder), or run oog-setup.cmd from the repo.", "oog.dev setup", "OK", "Error") | Out-Null
   return
 }
 $script:root = $root
