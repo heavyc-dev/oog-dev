@@ -1,20 +1,32 @@
-# oog-setup-gui.ps1 - clickable setup wizard. Collects choices in a window, then runs the
-# existing setup.mjs non-interactively (OOG_NI=1 + OOG_* answers) so the logic is never forked.
-# Launch via oog-setup.cmd (double-click) or: powershell -STA -ExecutionPolicy Bypass -File scripts\oog-setup-gui.ps1
+# oog-setup-gui.ps1 - clickable, themed setup wizard. Collects choices in a window, then runs
+# setup.mjs non-interactively (OOG_NI=1 + OOG_* answers) so the logic is never forked.
+# Launch: double-click oog-setup.cmd  |  npm run setup:gui  |  the built oog-setup.exe
 $ErrorActionPreference = "Stop"
 Add-Type -AssemblyName System.Windows.Forms
 Add-Type -AssemblyName System.Drawing
-# resolve the repo root robustly ($PSScriptRoot can be empty depending on how the script is launched)
+[System.Windows.Forms.Application]::EnableVisualStyles()
+
+# resolve repo root robustly ($PSScriptRoot can be empty depending on launch context)
 $self = $PSCommandPath
 if (-not $self -and $MyInvocation.MyCommand.Path) { $self = $MyInvocation.MyCommand.Path }
 if ($self) { $root = Split-Path -Parent (Split-Path -Parent $self) }
 elseif ($PSScriptRoot) { $root = Split-Path -Parent $PSScriptRoot }
 else { $root = (Get-Location).Path }
 if (-not (Test-Path (Join-Path $root "setup.mjs"))) {
-  [System.Windows.Forms.MessageBox]::Show("Couldn't find setup.mjs. Run this from the oog repo (double-click oog-setup.cmd in the repo folder).", "oog.dev setup", "OK", "Error") | Out-Null
+  [System.Windows.Forms.MessageBox]::Show("Couldn't find setup.mjs. Run from the oog repo (double-click oog-setup.cmd).", "oog.dev setup", "OK", "Error") | Out-Null
   return
 }
-$script:root = $root  # share with event handlers (click/timer run in their own scope)
+$script:root = $root
+
+# cave palette
+$cBg = [System.Drawing.Color]::FromArgb(36, 25, 16)
+$cPanel = [System.Drawing.Color]::FromArgb(21, 17, 10)
+$cBone = [System.Drawing.Color]::FromArgb(239, 227, 198)
+$cTorch = [System.Drawing.Color]::FromArgb(232, 160, 46)
+$cEmber = [System.Drawing.Color]::FromArgb(232, 122, 46)
+$cRock = [System.Drawing.Color]::FromArgb(91, 68, 48)
+$fBody = New-Object System.Drawing.Font("Segoe UI", 10)
+$fHead = New-Object System.Drawing.Font("Segoe UI", 15, [System.Drawing.FontStyle]::Bold)
 
 function Get-TailnetName {
   try { $j = (& tailscale status --json | Out-String | ConvertFrom-Json); return ($j.Self.DNSName -replace '\.$', '') } catch { return "" }
@@ -22,88 +34,108 @@ function Get-TailnetName {
 
 $form = New-Object System.Windows.Forms.Form
 $form.Text = "oog.dev setup"
-$form.Size = New-Object System.Drawing.Size(560, 640)
+$form.ClientSize = New-Object System.Drawing.Size(540, 660)
 $form.StartPosition = "CenterScreen"
-$form.FormBorderStyle = "FixedDialog"
-$form.MaximizeBox = $false
+$form.FormBorderStyle = "FixedDialog"; $form.MaximizeBox = $false
+$form.BackColor = $cBg; $form.ForeColor = $cBone; $form.Font = $fBody
 $ico = Join-Path $root "public\assets\oog.ico"
 if (Test-Path $ico) { try { $form.Icon = New-Object System.Drawing.Icon($ico) } catch {} }
 
-$y = 14
-function Add-Label($text, $bold) {
-  $l = New-Object System.Windows.Forms.Label
-  $l.Text = $text; $l.AutoSize = $true; $l.Location = New-Object System.Drawing.Point(16, $script:y)
-  if ($bold) { $l.Font = New-Object System.Drawing.Font("Segoe UI", 10, [System.Drawing.FontStyle]::Bold) }
-  $form.Controls.Add($l); $script:y += 24; return $l
-}
+# header: caveman + title
+$pic = New-Object System.Windows.Forms.PictureBox
+$pic.SizeMode = "Zoom"; $pic.Size = New-Object System.Drawing.Size(64, 76); $pic.Location = New-Object System.Drawing.Point(20, 16)
+$hero = Join-Path $root "public\assets\oog-hero.png"
+if (Test-Path $hero) { try { $pic.Image = [System.Drawing.Image]::FromFile($hero) } catch {} }
+$form.Controls.Add($pic)
+$title = New-Object System.Windows.Forms.Label
+$title.Text = "oog.dev"; $title.Font = $fHead; $title.ForeColor = $cTorch; $title.AutoSize = $true; $title.Location = New-Object System.Drawing.Point(96, 24)
+$form.Controls.Add($title)
+$sub = New-Object System.Windows.Forms.Label
+$sub.Text = "Host Claude Code here, drive it from your phone."; $sub.AutoSize = $true; $sub.ForeColor = $cBone; $sub.Location = New-Object System.Drawing.Point(98, 56)
+$form.Controls.Add($sub)
 
-Add-Label "oog.dev - host Claude Code, drive it from your phone" $true | Out-Null
+$y = 104
+function Add-Label($text) {
+  $l = New-Object System.Windows.Forms.Label
+  $l.Text = $text; $l.AutoSize = $true; $l.ForeColor = $cBone; $l.Location = New-Object System.Drawing.Point(20, $script:y)
+  $form.Controls.Add($l); $script:y += 22; return $l
+}
+function Style-Text($tb) { $tb.BackColor = $cPanel; $tb.ForeColor = $cBone; $tb.BorderStyle = "FixedSingle" }
 
 # token
 $cbGen = New-Object System.Windows.Forms.CheckBox
-$cbGen.Text = "Generate a strong token for me"; $cbGen.Checked = $true; $cbGen.AutoSize = $true
-$cbGen.Location = New-Object System.Drawing.Point(16, $y); $form.Controls.Add($cbGen); $y += 26
+$cbGen.Text = "Generate a strong token for me"; $cbGen.Checked = $true; $cbGen.AutoSize = $true; $cbGen.ForeColor = $cBone
+$cbGen.Location = New-Object System.Drawing.Point(20, $y); $form.Controls.Add($cbGen); $y += 26
 $tbToken = New-Object System.Windows.Forms.TextBox
-$tbToken.Location = New-Object System.Drawing.Point(16, $y); $tbToken.Size = New-Object System.Drawing.Size(500, 22)
+$tbToken.Location = New-Object System.Drawing.Point(20, $y); $tbToken.Size = New-Object System.Drawing.Size(496, 24); Style-Text $tbToken
 $tbToken.Enabled = $false; try { $tbToken.PlaceholderText = "...or paste your own token" } catch {}
-$form.Controls.Add($tbToken); $y += 34
+$form.Controls.Add($tbToken); $y += 36
 $cbGen.add_CheckedChanged({ $tbToken.Enabled = -not $cbGen.Checked })
 
 # code folder
 Add-Label "Folder that holds your repos (the cave picker):" | Out-Null
 $tbDir = New-Object System.Windows.Forms.TextBox
 $def = Join-Path $env:USERPROFILE ".code"; if (-not (Test-Path $def)) { $def = $env:USERPROFILE }
-$tbDir.Text = $def; $tbDir.Location = New-Object System.Drawing.Point(16, $y); $tbDir.Size = New-Object System.Drawing.Size(410, 22)
+$tbDir.Text = $def; $tbDir.Location = New-Object System.Drawing.Point(20, $y); $tbDir.Size = New-Object System.Drawing.Size(406, 24); Style-Text $tbDir
 $form.Controls.Add($tbDir)
 $btnBrowse = New-Object System.Windows.Forms.Button
-$btnBrowse.Text = "Browse..."; $btnBrowse.Location = New-Object System.Drawing.Point(432, ($y - 1)); $btnBrowse.Size = New-Object System.Drawing.Size(84, 24)
+$btnBrowse.Text = "Browse..."; $btnBrowse.Location = New-Object System.Drawing.Point(432, ($y - 1)); $btnBrowse.Size = New-Object System.Drawing.Size(84, 26)
+$btnBrowse.FlatStyle = "Flat"; $btnBrowse.BackColor = $cRock; $btnBrowse.ForeColor = $cBone; $btnBrowse.FlatAppearance.BorderSize = 0
 $btnBrowse.add_Click({ $d = New-Object System.Windows.Forms.FolderBrowserDialog; if ($d.ShowDialog() -eq "OK") { $tbDir.Text = $d.SelectedPath } })
-$form.Controls.Add($btnBrowse); $y += 36
+$form.Controls.Add($btnBrowse); $y += 38
 
 # access mode
 $grp = New-Object System.Windows.Forms.GroupBox
-$grp.Text = "How will you reach it?"; $grp.Location = New-Object System.Drawing.Point(16, $y); $grp.Size = New-Object System.Drawing.Size(500, 96)
-$rbTail = New-Object System.Windows.Forms.RadioButton; $rbTail.Text = "Phone over Tailscale (recommended)"; $rbTail.Location = New-Object System.Drawing.Point(12, 20); $rbTail.AutoSize = $true; $rbTail.Checked = $true
-$rbOog = New-Object System.Windows.Forms.RadioButton; $rbOog.Text = "Local on this PC at https://oog.dev"; $rbOog.Location = New-Object System.Drawing.Point(12, 44); $rbOog.AutoSize = $true
-$rbLocal = New-Object System.Windows.Forms.RadioButton; $rbLocal.Text = "Plain http://localhost (quick test)"; $rbLocal.Location = New-Object System.Drawing.Point(12, 68); $rbLocal.AutoSize = $true
-$grp.Controls.AddRange(@($rbTail, $rbOog, $rbLocal)); $form.Controls.Add($grp); $y += 104
+$grp.Text = "How will you reach it?"; $grp.ForeColor = $cTorch; $grp.Location = New-Object System.Drawing.Point(20, $y); $grp.Size = New-Object System.Drawing.Size(496, 98)
+$rbTail = New-Object System.Windows.Forms.RadioButton; $rbTail.Text = "Phone over Tailscale (recommended)"; $rbTail.ForeColor = $cBone; $rbTail.Location = New-Object System.Drawing.Point(14, 22); $rbTail.AutoSize = $true; $rbTail.Checked = $true
+$rbOog = New-Object System.Windows.Forms.RadioButton; $rbOog.Text = "Local on this PC at https://oog.dev"; $rbOog.ForeColor = $cBone; $rbOog.Location = New-Object System.Drawing.Point(14, 46); $rbOog.AutoSize = $true
+$rbLocal = New-Object System.Windows.Forms.RadioButton; $rbLocal.Text = "Plain http://localhost (quick test)"; $rbLocal.ForeColor = $cBone; $rbLocal.Location = New-Object System.Drawing.Point(14, 70); $rbLocal.AutoSize = $true
+$grp.Controls.AddRange(@($rbTail, $rbOog, $rbLocal)); $form.Controls.Add($grp); $y += 106
 
 # tailnet hostname
 $lblHost = Add-Label "Tailnet hostname (auto-detected; edit if blank):"
 $tbHost = New-Object System.Windows.Forms.TextBox
-$tbHost.Location = New-Object System.Drawing.Point(16, $y); $tbHost.Size = New-Object System.Drawing.Size(500, 22)
+$tbHost.Location = New-Object System.Drawing.Point(20, $y); $tbHost.Size = New-Object System.Drawing.Size(496, 24); Style-Text $tbHost
 $tbHost.Text = (Get-TailnetName)
-$form.Controls.Add($tbHost); $y += 36
+$form.Controls.Add($tbHost); $y += 34
 $toggleHost = { $vis = $rbTail.Checked; $lblHost.Visible = $vis; $tbHost.Visible = $vis }
 $rbTail.add_CheckedChanged($toggleHost); $rbOog.add_CheckedChanged($toggleHost); $rbLocal.add_CheckedChanged($toggleHost)
 
 # options
-$cbApprove = New-Object System.Windows.Forms.CheckBox; $cbApprove.Text = "Phone approvals (Allow/Deny on phone)"; $cbApprove.Checked = $true; $cbApprove.AutoSize = $true; $cbApprove.Location = New-Object System.Drawing.Point(16, $y); $form.Controls.Add($cbApprove); $y += 24
-$cbTray = New-Object System.Windows.Forms.CheckBox; $cbTray.Text = "Run in system tray at log on (no terminal)"; $cbTray.Checked = $true; $cbTray.AutoSize = $true; $cbTray.Location = New-Object System.Drawing.Point(16, $y); $form.Controls.Add($cbTray); $y += 24
-$cbResume = New-Object System.Windows.Forms.CheckBox; $cbResume.Text = "Auto-resume caves on start"; $cbResume.AutoSize = $true; $cbResume.Location = New-Object System.Drawing.Point(16, $y); $form.Controls.Add($cbResume); $y += 32
+function Add-Check($text, $checked) {
+  $cb = New-Object System.Windows.Forms.CheckBox
+  $cb.Text = $text; $cb.Checked = $checked; $cb.AutoSize = $true; $cb.ForeColor = $cBone; $cb.Location = New-Object System.Drawing.Point(20, $script:y)
+  $form.Controls.Add($cb); $script:y += 24; return $cb
+}
+$cbApprove = Add-Check "Phone approvals (Allow/Deny on phone)" $true
+$cbTray = Add-Check "Run in system tray at log on (no terminal)" $true
+$cbStart = Add-Check "Start oog now when setup finishes" $true
+$cbResume = Add-Check "Auto-resume caves on start" $false
+$y += 8
 
-# set up button + output
+# set up button
 $btnGo = New-Object System.Windows.Forms.Button
-$btnGo.Text = "Set up oog"; $btnGo.Location = New-Object System.Drawing.Point(16, $y); $btnGo.Size = New-Object System.Drawing.Size(500, 34)
-$btnGo.Font = New-Object System.Drawing.Font("Segoe UI", 10, [System.Drawing.FontStyle]::Bold)
-$form.Controls.Add($btnGo); $y += 42
+$btnGo.Text = "Set up oog"; $btnGo.Location = New-Object System.Drawing.Point(20, $y); $btnGo.Size = New-Object System.Drawing.Size(496, 38)
+$btnGo.FlatStyle = "Flat"; $btnGo.BackColor = $cEmber; $btnGo.ForeColor = [System.Drawing.Color]::FromArgb(42, 22, 7); $btnGo.FlatAppearance.BorderSize = 0
+$btnGo.Font = New-Object System.Drawing.Font("Segoe UI", 11, [System.Drawing.FontStyle]::Bold)
+$form.Controls.Add($btnGo); $y += 46
+
+# output log
 $out = New-Object System.Windows.Forms.TextBox
 $out.Multiline = $true; $out.ScrollBars = "Vertical"; $out.ReadOnly = $true
-$out.Location = New-Object System.Drawing.Point(16, $y); $out.Size = New-Object System.Drawing.Size(500, 120)
+$out.Location = New-Object System.Drawing.Point(20, $y); $out.Size = New-Object System.Drawing.Size(496, 120)
+$out.BackColor = $cPanel; $out.ForeColor = $cBone; $out.BorderStyle = "FixedSingle"
 $out.Font = New-Object System.Drawing.Font("Consolas", 9)
 $form.Controls.Add($out)
 
-# strip ANSI colour codes from captured wizard output
 function Strip-Ansi($s) { return ($s -replace "\x1b\[[0-9;]*m", "") }
-
 function b01($c) { if ($c) { "1" } else { "0" } }
+
 $btnGo.add_Click({
-  $btnGo.Enabled = $false
+  $btnGo.Enabled = $false; $btnGo.Text = "Setting up..."
   $out.Text = "Setting up..." + [Environment]::NewLine
   $mode = "1"
-  if ($rbOog.Checked) { $mode = "0" }
-  elseif ($rbLocal.Checked) { $mode = "2" }
-  # $script: scope so the timer tick (runs after this handler returns) can still see them
+  if ($rbOog.Checked) { $mode = "0" } elseif ($rbLocal.Checked) { $mode = "2" }
   $script:logFile = Join-Path $env:TEMP ("oog-setup-" + [System.Guid]::NewGuid().ToString("N") + ".log")
 
   $psi = New-Object System.Diagnostics.ProcessStartInfo
@@ -129,17 +161,22 @@ $btnGo.add_Click({
   $script:timer.add_Tick({
     if ($script:logFile -and (Test-Path $script:logFile)) { try { $out.Text = (Strip-Ansi ([System.IO.File]::ReadAllText($script:logFile))); $out.SelectionStart = $out.Text.Length; $out.ScrollToCaret() } catch {} }
     if ($script:proc.HasExited) {
-      $script:timer.Stop(); $btnGo.Enabled = $true
+      $script:timer.Stop(); $btnGo.Enabled = $true; $btnGo.Text = "Set up oog"
       $envFile = Join-Path $script:root ".env"; $tok = ""; $url = ""
       if (Test-Path $envFile) { foreach ($l in Get-Content $envFile) { if ($l -match '^AUTH_TOKEN=(.*)$') { $tok = $matches[1].Trim('"') }; if ($l -match '^OOG_URL=(.*)$') { $url = $matches[1].Trim('"') } } }
+      # launch the bridge now (tray) if requested
+      if ($cbStart.Checked) {
+        try { Start-Process powershell -ArgumentList '-NoProfile', '-ExecutionPolicy', 'Bypass', '-STA', '-WindowStyle', 'Hidden', '-File', (Join-Path $script:root 'scripts\oog-tray.ps1') } catch {}
+      }
       $nl = [Environment]::NewLine
-      $msg = "Done. Start it from the tray icon (or run: npm start)."
+      $msg = "Done."
+      if ($cbStart.Checked) { $msg += " oog is starting in the system tray." }
       if ($url) { $msg += $nl + $nl + "Open: " + $url }
-      if ($tok) { $msg += $nl + "Token: " + $tok + $nl + $nl + "Tip: npm start prints a QR you can scan on your phone (no typing)."; Set-Clipboard -Value $tok; $msg += $nl + $nl + "(Token copied to clipboard.)" }
+      if ($tok) { $msg += $nl + "Token: " + $tok + $nl + $nl + "Tip: npm start (or the tray) prints a QR you can scan on your phone."; Set-Clipboard -Value $tok; $msg += $nl + $nl + "(Token copied to clipboard.)" }
       [System.Windows.Forms.MessageBox]::Show($msg, "oog.dev ready", "OK", "Information") | Out-Null
     }
   })
   $script:timer.Start()
 })
 
-[void]$form.ShowDialog()
+if ($env:OOG_GUI_NOSHOW -ne "1") { [void]$form.ShowDialog() }

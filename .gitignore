@@ -6,6 +6,8 @@
 
 # deps & build
 node_modules/
+dist/
+*.exe
 
 # runtime state (caves/embers + generated hook settings)
 .oog/
