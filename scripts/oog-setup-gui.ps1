@@ -14,6 +14,7 @@ if (-not (Test-Path (Join-Path $root "setup.mjs"))) {
   [System.Windows.Forms.MessageBox]::Show("Couldn't find setup.mjs. Run this from the oog repo (double-click oog-setup.cmd in the repo folder).", "oog.dev setup", "OK", "Error") | Out-Null
   return
 }
+$script:root = $root  # share with event handlers (click/timer run in their own scope)
 
 function Get-TailnetName {
   try { $j = (& tailscale status --json | Out-String | ConvertFrom-Json); return ($j.Self.DNSName -replace '\.$', '') } catch { return "" }
@@ -102,12 +103,13 @@ $btnGo.add_Click({
   $mode = "1"
   if ($rbOog.Checked) { $mode = "0" }
   elseif ($rbLocal.Checked) { $mode = "2" }
-  $logFile = Join-Path $env:TEMP ("oog-setup-" + [System.Guid]::NewGuid().ToString("N") + ".log")
+  # $script: scope so the timer tick (runs after this handler returns) can still see them
+  $script:logFile = Join-Path $env:TEMP ("oog-setup-" + [System.Guid]::NewGuid().ToString("N") + ".log")
 
   $psi = New-Object System.Diagnostics.ProcessStartInfo
   $psi.FileName = "cmd.exe"
-  $psi.Arguments = '/c node setup.mjs > "' + $logFile + '" 2>&1'
-  $psi.WorkingDirectory = $root
+  $psi.Arguments = '/c node setup.mjs > "' + $script:logFile + '" 2>&1'
+  $psi.WorkingDirectory = $script:root
   $psi.UseShellExecute = $false; $psi.CreateNoWindow = $true; $psi.WindowStyle = "Hidden"
   $e = $psi.EnvironmentVariables
   $e["OOG_NI"] = "1"
@@ -120,15 +122,15 @@ $btnGo.add_Click({
   $e["OOG_AUTORESUME"] = (b01 $cbResume.Checked)
   $e["OOG_TRAY"] = (b01 $cbTray.Checked)
   $e["OOG_REINSTALL"] = "0"
-  $proc = [System.Diagnostics.Process]::Start($psi)
+  $script:proc = [System.Diagnostics.Process]::Start($psi)
 
-  $timer = New-Object System.Windows.Forms.Timer
-  $timer.Interval = 600
-  $timer.add_Tick({
-    if (Test-Path $logFile) { try { $out.Text = (Strip-Ansi ([System.IO.File]::ReadAllText($logFile))); $out.SelectionStart = $out.Text.Length; $out.ScrollToCaret() } catch {} }
-    if ($proc.HasExited) {
-      $timer.Stop(); $btnGo.Enabled = $true
-      $envFile = Join-Path $root ".env"; $tok = ""; $url = ""
+  $script:timer = New-Object System.Windows.Forms.Timer
+  $script:timer.Interval = 600
+  $script:timer.add_Tick({
+    if ($script:logFile -and (Test-Path $script:logFile)) { try { $out.Text = (Strip-Ansi ([System.IO.File]::ReadAllText($script:logFile))); $out.SelectionStart = $out.Text.Length; $out.ScrollToCaret() } catch {} }
+    if ($script:proc.HasExited) {
+      $script:timer.Stop(); $btnGo.Enabled = $true
+      $envFile = Join-Path $script:root ".env"; $tok = ""; $url = ""
       if (Test-Path $envFile) { foreach ($l in Get-Content $envFile) { if ($l -match '^AUTH_TOKEN=(.*)$') { $tok = $matches[1].Trim('"') }; if ($l -match '^OOG_URL=(.*)$') { $url = $matches[1].Trim('"') } } }
       $nl = [Environment]::NewLine
       $msg = "Done. Start it from the tray icon (or run: npm start)."
@@ -137,7 +139,7 @@ $btnGo.add_Click({
       [System.Windows.Forms.MessageBox]::Show($msg, "oog.dev ready", "OK", "Information") | Out-Null
     }
   })
-  $timer.Start()
+  $script:timer.Start()
 })
 
 [void]$form.ShowDialog()
