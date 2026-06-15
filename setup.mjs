@@ -20,9 +20,22 @@ const log = (s = "") => console.log(s);
 const ok = (s) => log(`${C.g}✓${C.x} ${s}`);
 const warn = (s) => log(`${C.y}!${C.x} ${s}`);
 const head = (s) => log(`\n${C.b}${C.c}${s}${C.x}`);
-const ask = async (q, def) => { const a = (await io.question(`${q}${def ? ` ${C.d}[${def}]${C.x}` : ""}: `)).trim(); return a || def || ""; };
-const yes = async (q, def = true) => { const a = (await io.question(`${q} ${C.d}(${def ? "Y/n" : "y/N"})${C.x} `)).trim().toLowerCase(); return a ? a[0] === "y" : def; };
-async function choose(q, opts) { log(`\n${q}`); opts.forEach((o, i) => log(`  ${C.b}${i + 1}${C.x}) ${o}`)); const a = await ask("choose"); const n = parseInt(a, 10); return n >= 1 && n <= opts.length ? n - 1 : 0; }
+// non-interactive mode: the GUI (scripts/oog-setup-gui.ps1) sets OOG_NI=1 + OOG_* answers and
+// reuses this exact logic instead of forking it. Each prompt takes an optional env `key`.
+const NI = process.env.OOG_NI === "1";
+const envHas = (k) => k && process.env[k] !== undefined && process.env[k] !== "";
+const ask = async (q, def, key) => {
+  if (NI) { const v = envHas(key) ? process.env[key] : (def || ""); log(`${q}: ${v}`); return v; }
+  const a = (await io.question(`${q}${def ? ` ${C.d}[${def}]${C.x}` : ""}: `)).trim(); return a || def || "";
+};
+const yes = async (q, def = true, key) => {
+  if (NI) { const b = envHas(key) ? (process.env[key] === "1" || /^y/i.test(process.env[key])) : def; log(`${q} ${b ? "yes" : "no"}`); return b; }
+  const a = (await io.question(`${q} ${C.d}(${def ? "Y/n" : "y/N"})${C.x} `)).trim().toLowerCase(); return a ? a[0] === "y" : def;
+};
+async function choose(q, opts, key) {
+  if (NI) { const n = envHas(key) ? parseInt(process.env[key], 10) : 0; const i = n >= 0 && n < opts.length ? n : 0; log(`${q} → ${opts[i]}`); return i; }
+  log(`\n${q}`); opts.forEach((o, i) => log(`  ${C.b}${i + 1}${C.x}) ${o}`)); const a = await ask("choose"); const n = parseInt(a, 10); return n >= 1 && n <= opts.length ? n - 1 : 0;
+}
 function run(cmd, args, opts = {}) { return spawnSync(cmd, args, { encoding: "utf8", shell: isWin, ...opts }); }
 const quote = (v) => (/\s/.test(v) ? `"${v}"` : v);
 function tailscaleDnsName() {
@@ -58,20 +71,20 @@ async function main() {
     ok(`found: ${(ver.stdout || "").trim() || "claude"}  ${C.d}(${claudeBin})${C.x}`);
   } else {
     warn("`claude` not found on PATH.");
-    const p = await ask("Full path to the claude executable (blank = keep 'claude' and resolve at runtime)");
+    const p = await ask("Full path to the claude executable (blank = keep 'claude' and resolve at runtime)", "", "OOG_CLAUDE_BIN");
     if (p) claudeBin = p;
   }
 
   // 3) Token
   head("Secret word (auth token)");
   let token;
-  if (await yes("Generate a strong token for you?")) { token = randomBytes(24).toString("base64url"); ok(`generated: ${C.b}${token}${C.x}`); }
-  else token = await ask("Paste a token") || randomBytes(24).toString("base64url");
+  if (await yes("Generate a strong token for you?", true, "OOG_GEN_TOKEN")) { token = randomBytes(24).toString("base64url"); ok(`generated: ${C.b}${token}${C.x}`); }
+  else token = (await ask("Paste a token", "", "OOG_TOKEN")) || randomBytes(24).toString("base64url");
 
   // 4) Code root
   head("Your code");
   const defRoot = existsSync(join(homedir(), ".code")) ? join(homedir(), ".code") : homedir();
-  const codeRoot = await ask("Folder that holds your repos (becomes the cave picker)", defRoot);
+  const codeRoot = await ask("Folder that holds your repos (becomes the cave picker)", defRoot, "OOG_CODE_ROOT");
   existsSync(codeRoot) ? ok(`caves from: ${codeRoot}`) : warn(`${codeRoot} doesn't exist yet — you can still type paths in the app.`);
 
   // 5) Access mode
@@ -80,7 +93,7 @@ async function main() {
     `Local on this PC at ${C.b}https://oog.dev${C.x} ${C.d}(recommended)${C.x}`,
     `Your phone over ${C.b}Tailscale${C.x}`,
     `Plain ${C.b}http://localhost${C.x} ${C.d}(quick test)${C.x}`,
-  ]);
+  ], "OOG_MODE_IDX");
 
   const env = { AUTH_TOKEN: token, CODE_ROOT: codeRoot, CLAUDE_BIN: claudeBin, BIND_HOST: "127.0.0.1" };
 
@@ -89,7 +102,7 @@ async function main() {
     log(`${C.d}.dev forces HTTPS in browsers, so oog.dev needs a locally-trusted cert. mkcert makes one.${C.x}`);
     const mk = run("mkcert", ["-version"]);
     const certDir = join(homedir(), ".oog-cert");
-    if (mk.status === 0 && await yes(`Make a cert with mkcert now (in ${certDir})?`)) {
+    if (mk.status === 0 && await yes(`Make a cert with mkcert now (in ${certDir})?`, true, "OOG_MKCERT")) {
       mkdirSync(certDir, { recursive: true });
       run("mkcert", ["-install"], { stdio: "inherit" });
       run("mkcert", ["oog.dev", "*.oog.dev", "localhost", "127.0.0.1", "::1"], { cwd: certDir, stdio: "inherit" });
@@ -102,14 +115,14 @@ async function main() {
       warn("mkcert not found. Install it, then re-run setup:");
       log(`    ${C.c}choco install mkcert${C.x}   (or  ${C.c}scoop install mkcert${C.x})`);
     }
-    const port = await ask("Port (443 = clean URL but needs admin; 8443 otherwise)", "8443");
+    const port = await ask("Port (443 = clean URL but needs admin; 8443 otherwise)", "8443", "OOG_PORT");
     env.PORT = port;
     // hosts entry
     const hosts = isWin ? join(process.env.SystemRoot || "C:\\Windows", "System32", "drivers", "etc", "hosts") : "/etc/hosts";
     try {
       const cur = existsSync(hosts) ? readFileSync(hosts, "utf8") : "";
       if (/\boog\.dev\b/.test(cur)) ok("hosts already maps oog.dev");
-      else if (await yes("Add  127.0.0.1 oog.dev  to your hosts file?")) {
+      else if (await yes("Add  127.0.0.1 oog.dev  to your hosts file?", true, "OOG_EDIT_HOSTS")) {
         writeFileSync(hosts, cur + `\n127.0.0.1   oog.dev\n`); ok("hosts updated");
       }
     } catch {
@@ -129,11 +142,11 @@ async function main() {
       log(`${C.d}Cleanest path: keep the bridge on localhost and let Tailscale serve HTTPS.${C.x}`);
       log(`Run this once (gives a trusted https URL on your phone):`);
       log(`    ${C.c}tailscale serve --bg --https=443 http://127.0.0.1:8765${C.x}`);
-      if (await yes("Run the tailscale serve command now?", false)) run("tailscale", ["serve", "--bg", "--https=443", "http://127.0.0.1:8765"], { stdio: "inherit" });
+      if (await yes("Run the tailscale serve command now?", false, "OOG_RUN_SERVE")) run("tailscale", ["serve", "--bg", "--https=443", "http://127.0.0.1:8765"], { stdio: "inherit" });
     } else {
       warn("tailscale not found — install Tailscale, then run the serve command from the README.");
     }
-    const host = dns || (await ask("Your tailnet hostname (e.g. mypc.tailXXXX.ts.net; blank to fill later)")) || "<your-pc>.<tailnet>.ts.net";
+    const host = dns || (await ask("Your tailnet hostname (e.g. mypc.tailXXXX.ts.net; blank to fill later)", "", "OOG_HOSTNAME")) || "<your-pc>.<tailnet>.ts.net";
     env._URL = `https://${host}`;
     env._ORIGINS = /[<>]/.test(host) ? [] : [`https://${host}`];
   } else {
@@ -148,14 +161,14 @@ async function main() {
   log(`${C.d}Only browsers loaded from these origins may open the socket — an extra layer on top of the token.${C.x}`);
   const suggested = (env._ORIGINS || []).join(",");
   if (suggested) log(`${C.d}Suggested for your access mode: ${C.x}${C.b}${suggested}${C.x}`);
-  const originsAns = await ask("Allowed origins (comma-separated; blank = any origin that has the token)", suggested);
+  const originsAns = await ask("Allowed origins (comma-separated; blank = any origin that has the token)", suggested, "OOG_ORIGINS");
   if (originsAns.trim()) env.ALLOWED_ORIGINS = originsAns.trim();
   else warn("no origin lock — relying on the token alone (fine, but ALLOWED_ORIGINS is recommended).");
 
   // 5b) behaviour options
   head("Options");
-  if (await yes("Use phone approvals (clean Allow/Deny on the phone for each tool)?", true) === false) env.CC_BRIDGE_HOOK = "0";
-  if (await yes("Auto-resume your caves when the bridge starts?", false)) env.RELIGHT_ON_START = "1";
+  if (await yes("Use phone approvals (clean Allow/Deny on the phone for each tool)?", true, "OOG_APPROVALS") === false) env.CC_BRIDGE_HOOK = "0";
+  if (await yes("Auto-resume your caves when the bridge starts?", false, "OOG_AUTORESUME")) env.RELIGHT_ON_START = "1";
 
   // 5c) push notification keys
   head("Notifications");
@@ -166,7 +179,7 @@ async function main() {
 
   // 6) install deps
   head("Dependencies");
-  if (existsSync(join(ROOT, "node_modules")) && !(await yes("node_modules exists — reinstall?", false))) ok("skipping install");
+  if (existsSync(join(ROOT, "node_modules")) && !(await yes("node_modules exists — reinstall?", false, "OOG_REINSTALL"))) ok("skipping install");
   else {
     log(`${C.d}installing (node-pty builds a native module; if it fails on Windows, see README for the prebuilt fork)…${C.x}`);
     const r = run("npm", ["install"], { cwd: ROOT, stdio: "inherit" });
@@ -182,7 +195,7 @@ async function main() {
 
   // 8) startup task — runs the bridge in the system tray (caveman icon) at logon, no terminal
   head("Always-on (optional)");
-  if (isWin && await yes("Run oog in the system tray at log on (caveman icon, no terminal)?", false)) {
+  if (isWin && await yes("Run oog in the system tray at log on (caveman icon, no terminal)?", false, "OOG_TRAY")) {
     // /TR is one command string. Pass it as a single arg with shell:false so the shell can't
     // split "powershell -ExecutionPolicy …" into separate schtasks args. -STA is needed for the
     // tray's WinForms NotifyIcon; -WindowStyle Hidden keeps it windowless.
