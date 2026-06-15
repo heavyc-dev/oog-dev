@@ -26,9 +26,16 @@
   document.querySelectorAll('.face').forEach(im => im.src = FRAMES.base);
 
   // ── oog moods: caveman animations driven by app state (CSS classes on #hdrTablet) ──
-  const MOODS = ['idle', 'work', 'off', 'send', 'error', 'pop', 'tool', 'alert'];
-  let ambientMood = 'idle', moodT = null, permAlert = false;
-  function setMoodClass(m){ const h = $('#hdrTablet'); if (!h) return; h.classList.remove(...MOODS.map(x => 'mood-' + x)); h.classList.add('mood-' + m); }
+  const MOODS = ['idle', 'work', 'off', 'send', 'error', 'pop', 'tool', 'alert', 'wave', 'shiver', 'cheer', 'lean', 'hype'];
+  // OPTIONAL frame art per mood — drop sprites in public/assets/, register them in FRAMES below,
+  // then list the sequence here. Empty = CSS-only motion (current). Example, once drawn:
+  //   FRAMES.chisel = 'assets/claude-chisel.png'; FRAME_SEQ.tool = ['chisel', 'base'];
+  //   FRAMES.wave = 'assets/claude-wave.png';     FRAME_SEQ.wave = ['wave', 'base'];
+  const FRAME_SEQ = {};
+  let frameTimer = null, ambientMood = 'idle', moodT = null, permAlert = false, workStart = 0;
+  function stopFrames(){ if (frameTimer) { clearInterval(frameTimer); frameTimer = null; if (!talking) setHdr('base'); } }
+  function playFrames(m){ const seq = FRAME_SEQ[m]; stopFrames(); if (!seq || !seq.length || reduce) return false; let i = 0; const step = () => { const fn = seq[i++ % seq.length]; if (FRAMES[fn]) setHdr(fn); }; step(); frameTimer = setInterval(step, 160); return true; }
+  function setMoodClass(m){ const h = $('#hdrTablet'); if (!h) return; h.classList.remove(...MOODS.map(x => 'mood-' + x)); h.classList.add('mood-' + m); playFrames(m); }
   function setAmbient(m){ ambientMood = m; clearTimeout(moodT); if (!permAlert) setMoodClass(m); }
   function flashMood(m, ms = 450){ if (reduce || permAlert) return; setMoodClass(m); clearTimeout(moodT); moodT = setTimeout(() => setMoodClass(ambientMood), ms); }
 
@@ -95,7 +102,7 @@
     if (!dirs || !dirs.length) { c.innerHTML = '<span class="muted" style="font-size:15px">Set CODE_ROOT to list repos, or type a path below.</span>'; return; }
     for (const d of dirs) { const chip = el('div', 'chip'); chip.textContent = base(d); chip.title = d; chip.onclick = () => send({ type:'new_session', cwd:d }); c.appendChild(chip); }
   }
-  function openCave(id){ activeId = id; pendingReattach = null; show('chat'); ensureTerm(); term.reset(); resetWall(); hideCmdMenu(); setHeader(sessions.get(id)); renderSnips(); renderQueue(); send({ type:'attach', sessionId:id }); send({ type:'list_commands', sessionId:id }); fitSoon(); }
+  function openCave(id){ activeId = id; pendingReattach = null; show('chat'); ensureTerm(); term.reset(); resetWall(); hideCmdMenu(); setHeader(sessions.get(id)); renderSnips(); renderQueue(); send({ type:'attach', sessionId:id }); send({ type:'list_commands', sessionId:id }); fitSoon(); flashMood('wave', 1000); }
   function setHeader(s){ if (!s) return; $('#hdrName').textContent = s.title; setWorking(false, s.status !== 'running'); $('#hdrTablet').classList.toggle('away', s.status !== 'running'); }
 
   // working / status
@@ -158,7 +165,11 @@
       case 'commands': commands = m.items || []; break;
       case 'dir': renderBrowse(m); break;
       case 'file': if ($('#viewer').classList.contains('show') && m.path === viewerPath) $('#viewerBody').textContent = m.content || '(empty)'; break;
-      case 'state': if (m.sessionId === activeId) { setWorking(!!m.busy); if (!m.busy) flushQueue(); } break;
+      case 'state': if (m.sessionId === activeId) {
+        if (m.busy) { if (!workStart) workStart = Date.now(); }
+        setWorking(!!m.busy);
+        if (!m.busy) { const long = workStart && (Date.now() - workStart > 6000); workStart = 0; flushQueue(); if (long) flashMood('cheer', 700); }
+      } break;
       case 'session_started': sessions.set(m.sessionId, { id:m.sessionId, cwd:m.cwd, title:m.title, status:'running' }); renderCaves(); break;
       case 'session_closed': { const s = sessions.get(m.sessionId); if (s) s.status = 'exited'; renderCaves(); if (m.sessionId === activeId) setHeader(sessions.get(activeId)); break; }
       case 'attached': openCave(m.sessionId); break;
@@ -280,6 +291,8 @@
     if (e.key === 'Enter' && !e.shiftKey && !isTouch) { e.preventDefault(); sendPrompt(); }
   });
   input.addEventListener('input', () => { input.style.height = 'auto'; input.style.height = Math.min(120, input.scrollHeight) + 'px'; updateCmdMenu(); });
+  input.addEventListener('focus', () => { if (!permAlert && !reduce) setMoodClass('lean'); });   // caveman leans in to listen
+  input.addEventListener('blur', () => { if (!permAlert) setMoodClass(ambientMood); });
 
   document.querySelectorAll('.cap[data-key]').forEach(c => c.addEventListener('click', () => { if (activeId) send({ type: c.dataset.key === 'ctrl-c' ? 'interrupt' : 'key', sessionId: activeId, key: c.dataset.key }); }));
 

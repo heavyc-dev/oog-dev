@@ -129,6 +129,15 @@ h1.head{ font-family:var(--font-head); font-weight:400; font-size:30px; color:va
 #hdrTablet.mood-pop   .face{ animation:oog-pop .42s ease-out; }
 #hdrTablet.mood-tool  .face{ animation:oog-nod .3s ease-out; }
 #hdrTablet.mood-alert .face{ animation:oog-alert .7s ease-in-out infinite; }
+@keyframes oog-wave{ 0%,100%{transform:rotate(0)} 25%{transform:rotate(-12deg)} 75%{transform:rotate(12deg)} }
+@keyframes oog-shiver{ 0%,100%{transform:translateX(0)} 25%{transform:translateX(-1.5px)} 75%{transform:translateX(1.5px)} }
+@keyframes oog-cheer{ 0%,100%{transform:translateY(0)} 25%{transform:translateY(-6px) scale(1.05)} 50%{transform:translateY(0)} 78%{transform:translateY(-3px)} }
+@keyframes oog-lean{ to{ transform:translateX(3px) rotate(2deg) } }
+#hdrTablet.mood-wave   .face{ animation:oog-wave .5s ease-in-out 2; }
+#hdrTablet.mood-shiver .face{ animation:oog-shiver .11s linear infinite; }
+#hdrTablet.mood-cheer  .face{ animation:oog-cheer .65s ease-out; }
+#hdrTablet.mood-lean   .face{ animation:oog-lean .22s ease-out forwards; }
+#hdrTablet.mood-hype   .face{ animation:oog-bob 1.3s ease-in-out infinite; }
 #hdrTablet.mood-alert{ box-shadow:var(--chisel), 0 0 14px var(--torch); }
 /* sleepy Zzz when the fire's out */
 #hdrTablet.mood-off{ position:relative; }
