@@ -123,11 +123,14 @@ h1.head{ font-family:var(--font-head); font-weight:400; font-size:30px; color:va
 #qrBox img, #qrBox canvas, #qrBox svg{ display:block; width:200px; height:200px; image-rendering:pixelated; }
 
 /* live terminal (xterm.js) — the single surface */
-#term{ min-height:0; overflow:hidden; background:#15110a; padding:6px 8px 2px; }
-#term .xterm{ height:100%; padding:0; }
-#term .xterm-viewport{ overflow-y:auto; background:transparent !important; }
+#term{ min-height:0; min-width:0; max-width:100%; overflow:hidden; background:#15110a; padding:6px 8px 2px; }
+#term .xterm{ height:100%; width:100%; padding:0; }
+#term .xterm-viewport{ overflow-y:auto; overflow-x:hidden; background:transparent !important; }
 #term .xterm-viewport::-webkit-scrollbar{ width:8px; }
 #term .xterm-viewport::-webkit-scrollbar-thumb{ background:var(--rock); border-radius:4px; }
+/* the chat screen is a single-column grid; let the terminal cell shrink, never force-widen the page */
+#screen-chat.active{ overflow:hidden; }
+#screen-chat.active > *{ min-width:0; max-width:100%; }
 
 /* input + stone keys */
 .composer{ padding:10px 12px 14px; background:var(--stone); border-top:2px solid var(--rock); box-shadow:var(--chisel); }

@@ -88,7 +88,7 @@
     if (!dirs || !dirs.length) { c.innerHTML = '<span class="muted" style="font-size:15px">Set CODE_ROOT to list repos, or type a path below.</span>'; return; }
     for (const d of dirs) { const chip = el('div', 'chip'); chip.textContent = base(d); chip.title = d; chip.onclick = () => send({ type:'new_session', cwd:d }); c.appendChild(chip); }
   }
-  function openCave(id){ activeId = id; pendingReattach = null; show('chat'); ensureTerm(); term.reset(); resetWall(); hideCmdMenu(); setHeader(sessions.get(id)); renderSnips(); renderQueue(); send({ type:'attach', sessionId:id }); send({ type:'list_commands', sessionId:id }); setTimeout(fitNow, 0); }
+  function openCave(id){ activeId = id; pendingReattach = null; show('chat'); ensureTerm(); term.reset(); resetWall(); hideCmdMenu(); setHeader(sessions.get(id)); renderSnips(); renderQueue(); send({ type:'attach', sessionId:id }); send({ type:'list_commands', sessionId:id }); fitSoon(); }
   function setHeader(s){ if (!s) return; $('#hdrName').textContent = s.title; setWorking(false, s.status !== 'running'); $('#hdrTablet').classList.toggle('away', s.status !== 'running'); }
 
   // working / status
@@ -117,10 +117,16 @@
     term.open($('#term'));
     // direct typing in the terminal goes straight to the PTY (desktop power-use)
     term.onData(d => { if (activeId) send({ type:'key', sessionId:activeId, key:d }); });
-    setTimeout(fitNow, 0);
-    window.addEventListener('resize', fitNow);
+    // re-fit whenever the container actually resizes — the only reliable trigger on iOS
+    // (layout settle, rotation, the dynamic Safari toolbar, keyboard show/hide).
+    try { new ResizeObserver(() => fitNow()).observe($('#term')); } catch { window.addEventListener('resize', fitNow); }
+    if (window.visualViewport) window.visualViewport.addEventListener('resize', fitNow);
+    window.addEventListener('orientationchange', () => setTimeout(fitNow, 250));
+    fitSoon();
     return term;
   }
+  // fit a few times after open — the first frame often hasn't laid out yet on mobile
+  function fitSoon(){ [0, 120, 350, 700].forEach(ms => setTimeout(fitNow, ms)); }
   let lastDims = '';
   function fitNow(){
     if (!term || !fit) return;
@@ -153,7 +159,7 @@
         ensureTerm(); term.reset(); resetWall();
         feedWall(m.pty || ''); term.write(m.pty || '');
         if (sessions.get(activeId)) sessions.get(activeId).status = m.status || 'running';
-        setHeader(sessions.get(activeId)); fitNow(); break;
+        setHeader(sessions.get(activeId)); fitSoon(); break;
       case 'permission_request': if (m.sessionId === activeId) showPerm(m); break;
       case 'pty':
         if (m.sessionId && m.sessionId !== activeId) break;
