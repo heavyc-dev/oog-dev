@@ -15,6 +15,9 @@ dist/
 # certs, if you keep them in-tree
 *.pem
 
+# tool artifacts
+.playwright-mcp/
+
 # os/editor noise
 .DS_Store
 Thumbs.db

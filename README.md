@@ -56,6 +56,7 @@ The wizard generates a strong token, sets up Tailscale (or a local cert), instal
 | 🦴 **System tray** | Windows tray app (no terminal): Open · Show pairing QR · Copy token · Restart · Quit |
 | 📥 **Install as an app** | Start Menu + Startup toggle + Installed-apps entry; 📲 button does Add-to-Home-Screen |
 | ✅ **Phone approvals** | Each tool that needs permission pops a clean Allow / Deny |
+| 🦴 **Living caveman** | oog reacts to every state — bobs, sways, sleeps, cheers — and grunts caveman one-liners in a stone-tablet bubble |
 
 ---
 
