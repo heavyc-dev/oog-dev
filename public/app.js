@@ -1,6 +1,10 @@
 /* oog.dev — cc-bridge PWA client */
 (() => {
-  const FRAMES = { base:'assets/claude-base.png', blink:'assets/claude-blink.png', talk:'assets/claude-talk.png' };
+  const FRAMES = {
+    base:'assets/claude-base.png', blink:'assets/claude-blink.png', talk:'assets/claude-talk.png',
+    happy:'assets/claude-happy.png', worried:'assets/claude-worried.png', ouch:'assets/claude-ouch.png',
+    sleep:'assets/claude-sleep.png', wink:'assets/claude-wink.png',
+  };
   const $ = s => document.querySelector(s);
   const el = (t, c) => { const e = document.createElement(t); if (c) e.className = c; return e; };
   const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -19,7 +23,7 @@
   const setHdr = f => { if (hdrFace) hdrFace.src = FRAMES[f]; };
   let blinkTimer = null, talkTimer = null, talking = false;
   function startBlink(){ if (reduce) return; clearInterval(blinkTimer); blinkTimer = setInterval(() => {
-    if (talking) return; setHdr('blink'); setTimeout(() => { if (!talking) setHdr('base'); }, 130); }, 3600 + Math.random() * 1800); }
+    if (talking || frameTimer) return; setHdr('blink'); setTimeout(() => { if (!talking && !frameTimer) setHdr('base'); }, 130); }, 3600 + Math.random() * 1800); }
   function talk(ms = 1200){ if (reduce) return; talking = true; clearInterval(talkTimer); let on = false;
     talkTimer = setInterval(() => { on = !on; setHdr(on ? 'talk' : 'base'); }, 150);
     setTimeout(() => { clearInterval(talkTimer); talking = false; setHdr('base'); }, ms); }
@@ -31,7 +35,7 @@
   // then list the sequence here. Empty = CSS-only motion (current). Example, once drawn:
   //   FRAMES.chisel = 'assets/claude-chisel.png'; FRAME_SEQ.tool = ['chisel', 'base'];
   //   FRAMES.wave = 'assets/claude-wave.png';     FRAME_SEQ.wave = ['wave', 'base'];
-  const FRAME_SEQ = {};
+  const FRAME_SEQ = { off:['sleep'], error:['ouch'], alert:['worried'], cheer:['happy'], pop:['happy'], hype:['happy'] };
   let frameTimer = null, ambientMood = 'idle', moodT = null, permAlert = false, workStart = 0, allowStreak = 0, streakT = null;
   function stopFrames(){ if (frameTimer) { clearInterval(frameTimer); frameTimer = null; if (!talking) setHdr('base'); } }
   function playFrames(m){ const seq = FRAME_SEQ[m]; stopFrames(); if (!seq || !seq.length || reduce) return false; let i = 0; const step = () => { const fn = seq[i++ % seq.length]; if (FRAMES[fn]) setHdr(fn); }; step(); frameTimer = setInterval(step, 160); return true; }
