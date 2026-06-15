@@ -180,16 +180,18 @@ async function main() {
   writeFileSync(join(ROOT, ".env"), lines.join("\n") + "\n");
   ok(".env written");
 
-  // 8) startup task
+  // 8) startup task — runs the bridge in the system tray (caveman icon) at logon, no terminal
   head("Always-on (optional)");
-  if (isWin && await yes("Create a Windows startup task so the bridge runs at log on?", false)) {
+  if (isWin && await yes("Run oog in the system tray at log on (caveman icon, no terminal)?", false)) {
     // /TR is one command string. Pass it as a single arg with shell:false so the shell can't
-    // split "powershell -ExecutionPolicy …" into separate schtasks args (the original bug).
-    // shell:false lets Node quote the arg for CreateProcess; the inner path stays quoted for spaces.
-    const ps1 = join(ROOT, "scripts", "start-bridge.ps1");
-    const tr = `powershell -ExecutionPolicy Bypass -WindowStyle Hidden -File "${ps1}"`;
+    // split "powershell -ExecutionPolicy …" into separate schtasks args. -STA is needed for the
+    // tray's WinForms NotifyIcon; -WindowStyle Hidden keeps it windowless.
+    const ps1 = join(ROOT, "scripts", "oog-tray.ps1");
+    const tr = `powershell -ExecutionPolicy Bypass -WindowStyle Hidden -STA -File "${ps1}"`;
     const reg = run("schtasks", ["/Create", "/TN", "oog.dev-bridge", "/TR", tr, "/SC", "ONLOGON", "/F"], { stdio: "inherit", shell: false });
-    reg.status === 0 ? ok("startup task 'oog.dev-bridge' created") : warn("couldn't register the task — re-run setup from an elevated (Administrator) terminal, or run scripts\\start-bridge.ps1 manually.");
+    reg.status === 0
+      ? ok("tray task 'oog.dev-bridge' created — it starts at next log on (or run scripts\\oog-tray.ps1 now)")
+      : warn("couldn't register the task — re-run setup from an elevated (Administrator) terminal, or run scripts\\oog-tray.ps1 manually.");
   }
 
   // done
