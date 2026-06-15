@@ -53,12 +53,12 @@ body{
 #tokenInput:focus{ outline:3px solid var(--torch); outline-offset:2px; }
 
 /* ── caves screen ── */
-#screen-caves{ padding:18px; gap:14px; overflow-y:auto; }
+#screen-caves{ padding:18px; gap:14px; overflow-y:auto; overflow-x:hidden; }
 .topline{ display:flex; align-items:center; justify-content:space-between; gap:10px; }
 .eyebrow{ font-family:var(--font-chisel); font-size:10px; color:var(--ochre); }
 h1.head{ font-family:var(--font-head); font-weight:400; font-size:30px; color:var(--torch); margin:2px 0 0; }
-.slots{ display:grid; gap:10px; }
-.slot{ display:flex; align-items:center; gap:12px; background:var(--stone); border:1px solid var(--stone-2);
+.slots{ display:grid; gap:10px; grid-template-columns:minmax(0,1fr); }
+.slot{ display:flex; align-items:center; gap:12px; min-width:0; overflow:hidden; background:var(--stone); border:1px solid var(--stone-2);
   border-left:3px solid var(--ember); border-radius:var(--r); padding:13px 14px; box-shadow:var(--chisel); cursor:pointer; }
 .slot.dead{ border-left-color:var(--clay); opacity:.78; }
 .slot .fire{ width:10px; height:10px; border-radius:50%; background:var(--ember); box-shadow:0 0 9px var(--ember); flex:0 0 auto; }
@@ -66,7 +66,7 @@ h1.head{ font-family:var(--font-head); font-weight:400; font-size:30px; color:va
 .slot .info{ flex:1; min-width:0; }
 .slot .slotno{ font-family:var(--font-chisel); font-size:8px; color:var(--torch); }
 .slot .ttl{ font-size:14px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-.slot .go{ font-family:var(--font-voice); font-size:20px; color:var(--torch); }
+.slot .go{ font-family:var(--font-voice); font-size:20px; color:var(--torch); flex:0 0 auto; white-space:nowrap; }
 .newcave{ background:var(--stone); border:1px solid var(--stone-2); border-radius:var(--r); padding:14px; box-shadow:var(--chisel); }
 .newcave .lbl{ font-family:var(--font-chisel); font-size:9px; color:var(--clay); margin-bottom:10px; }
 .chips{ display:flex; flex-wrap:wrap; gap:8px; margin-bottom:12px; }
