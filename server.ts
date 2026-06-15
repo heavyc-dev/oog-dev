@@ -15,6 +15,7 @@ import { WebSocketServer, WebSocket } from "ws";
 import webpush from "web-push";
 import * as pty from "node-pty";
 import { mapTranscriptLine, stripAnsi, encodeCwd, isUserPrompt } from "./transcript.mjs";
+import { printQR } from "./qr-terminal.mjs";
 
 const ROOT = dirname(fileURLToPath(import.meta.url));
 
@@ -418,6 +419,11 @@ const MIME: Record<string, string> = {
 };
 const handler = (req: any, res: any) => {
   const path = (req.url ?? "/").split("?")[0];
+  if (process.env.OOG_ACCESS_LOG === "1") {
+    const ua = String(req.headers["user-agent"] || "");
+    const dev = /iPhone|iPad|Android/i.test(ua) ? "📱PHONE" : /Edge|Chrome|Firefox|Safari/i.test(ua) ? "💻PC" : "?";
+    console.log(`[req] ${req.method} ${path}  ${dev}  ua="${ua.slice(0, 50)}"`);
+  }
   if (req.method === "POST" && path === "/hook/permission") {
     let body = ""; req.on("data", (c: any) => (body += c));
     req.on("end", () => {
@@ -549,5 +555,10 @@ httpServer.listen(PORT, BIND_HOST, () => {
   const scheme = useTLS ? "https" : "http";
   console.log(`oog.dev bridge → ${scheme}://${BIND_HOST}:${PORT}  (ws same port)`);
   console.log(`caves root: ${CODE_ROOT || "(none)"}   claude: ${CLAUDE_BIN}   tls:${useTLS}   hook:${HOOK_ENABLED}`);
+  const url = process.env.OOG_URL;
+  if (url && AUTH_TOKEN) {
+    console.log(`\nopen: ${url}`);
+    printQR(`${url}/?token=${encodeURIComponent(AUTH_TOKEN)}`).then((ok) => { if (ok) console.log("📱 scan to connect on your phone (already signed in)\n"); }).catch(() => {});
+  }
   if (RELIGHT_ON_START) for (const c of embers()) { try { newSession(c.cwd, c.ccSessionId); } catch {} }
 });
