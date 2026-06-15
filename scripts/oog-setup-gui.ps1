@@ -60,12 +60,12 @@ function Get-TailnetName {
   try { $j = (& tailscale status --json | Out-String | ConvertFrom-Json); return ($j.Self.DNSName -replace '\.$', '') } catch { return "" }
 }
 
-$LEFT = 32; $W = 532
+$LEFT = 32; $W = 512   # control width leaves a right margin so a scrollbar can never clip controls
 $form = New-Object System.Windows.Forms.Form
 $form.AutoScaleDimensions = New-Object System.Drawing.SizeF(96, 96)
 $form.AutoScaleMode = [System.Windows.Forms.AutoScaleMode]::Dpi
 $form.Text = "oog.dev setup"
-$form.ClientSize = New-Object System.Drawing.Size(596, 710)
+$form.ClientSize = New-Object System.Drawing.Size(600, 936)   # tall enough to show everything without scrolling
 $form.StartPosition = "CenterScreen"
 $form.FormBorderStyle = "FixedDialog"; $form.MaximizeBox = $false
 $form.AutoScroll = $true   # if DPI scaling makes it taller than the screen, scroll instead of clipping
@@ -223,4 +223,10 @@ $btnGo.add_Click({
   $script:timer.Start()
 })
 
+# if DPI scaling makes the window taller than the screen, cap to the work area (AutoScroll covers the rest)
+$form.add_Shown({
+  $wa = [System.Windows.Forms.Screen]::FromControl($form).WorkingArea
+  if ($form.Height -gt $wa.Height) { $form.Height = $wa.Height }
+  if ($form.Top -lt $wa.Top) { $form.Top = $wa.Top }
+})
 if ($env:OOG_GUI_NOSHOW -ne "1") { [void]$form.ShowDialog() }
