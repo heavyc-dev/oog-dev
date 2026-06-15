@@ -44,7 +44,8 @@
     ws.onopen = () => send({ type:'auth', token });
     ws.onmessage = e => { let m; try { m = JSON.parse(e.data); } catch { return; } handle(m); };
     ws.onclose = ev => {
-      if (ev.code === 1008) { connMsg('wrong word. try again.'); localStorage.removeItem('oog_token'); token = ''; show('connect'); }
+      if (ev.code === 1008 && /origin/i.test(ev.reason || '')) { connMsg('blocked: this page’s origin isn’t in ALLOWED_ORIGINS. Open the allowed URL (your Tailscale/oog.dev address), or add this origin in .env.'); show('connect'); }
+      else if (ev.code === 1008) { connMsg('wrong word. try again.'); localStorage.removeItem('oog_token'); token = ''; show('connect'); }
       else { if (activeId) pendingReattach = activeId; show('connect'); scheduleReconnect(); }
     };
     ws.onerror = () => {};
