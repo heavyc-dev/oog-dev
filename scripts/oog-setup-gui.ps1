@@ -2,9 +2,28 @@
 # setup.mjs non-interactively (OOG_NI=1 + OOG_* answers) so the logic is never forked.
 # Launch: double-click oog-setup.cmd  |  npm run setup:gui  |  the built oog-setup.exe
 $ErrorActionPreference = "Stop"
+# make the process DPI-aware BEFORE any window exists, or Windows bitmap-scales it (blurry on hi-DPI).
+try {
+  Add-Type @"
+using System;
+using System.Runtime.InteropServices;
+public static class OogDpi {
+  [DllImport("user32.dll")] static extern bool SetProcessDpiAwarenessContext(IntPtr c);
+  [DllImport("shcore.dll")] static extern int SetProcessDpiAwareness(int v);
+  [DllImport("user32.dll")] static extern bool SetProcessDPIAware();
+  public static void On() {
+    try { if (SetProcessDpiAwarenessContext((IntPtr)(-4))) return; } catch {}   // PerMonitorV2 (Win10 1703+)
+    try { if (SetProcessDpiAwareness(2) == 0) return; } catch {}                 // PerMonitor (Win8.1+)
+    try { SetProcessDPIAware(); } catch {}                                       // System (Vista+)
+  }
+}
+"@
+  [OogDpi]::On()
+} catch {}
 Add-Type -AssemblyName System.Windows.Forms
 Add-Type -AssemblyName System.Drawing
 [System.Windows.Forms.Application]::EnableVisualStyles()
+[System.Windows.Forms.Application]::SetCompatibleTextRenderingDefault($false)
 
 # resolve repo root: works as a .ps1 (in scripts/) AND as the built .exe (in dist/).
 # Build candidate roots from every source we can, then pick whichever actually holds setup.mjs.
@@ -42,6 +61,8 @@ function Get-TailnetName {
 }
 
 $form = New-Object System.Windows.Forms.Form
+$form.AutoScaleDimensions = New-Object System.Drawing.SizeF(96, 96)
+$form.AutoScaleMode = [System.Windows.Forms.AutoScaleMode]::Dpi
 $form.Text = "oog.dev setup"
 $form.ClientSize = New-Object System.Drawing.Size(540, 660)
 $form.StartPosition = "CenterScreen"
