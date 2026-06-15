@@ -60,117 +60,124 @@ function Get-TailnetName {
   try { $j = (& tailscale status --json | Out-String | ConvertFrom-Json); return ($j.Self.DNSName -replace '\.$', '') } catch { return "" }
 }
 
-$LEFT = 32; $W = 512   # control width leaves a right margin so a scrollbar can never clip controls
+$INNER = 540   # width of full-width controls inside the panel
 $form = New-Object System.Windows.Forms.Form
 $form.AutoScaleDimensions = New-Object System.Drawing.SizeF(96, 96)
 $form.AutoScaleMode = [System.Windows.Forms.AutoScaleMode]::Dpi
 $form.Text = "oog.dev setup"
-$form.ClientSize = New-Object System.Drawing.Size(600, 968)   # tall enough to show everything without scrolling
 $form.StartPosition = "CenterScreen"
 $form.FormBorderStyle = "FixedDialog"; $form.MaximizeBox = $false
-$form.AutoScroll = $true   # if DPI scaling makes it taller than the screen, scroll instead of clipping
-$form.BackColor = $cBg; $form.ForeColor = $cBone; $form.Font = $fBody; $form.Padding = New-Object System.Windows.Forms.Padding(0, 0, 0, 12)
+$form.BackColor = $cBg; $form.ForeColor = $cBone; $form.Font = $fBody
+$form.ClientSize = New-Object System.Drawing.Size(600, 700)
 $ico = Join-Path $root "public\assets\oog.ico"
 if (Test-Path $ico) { try { $form.Icon = New-Object System.Drawing.Icon($ico) } catch {} }
 
+# everything lives in a top-down flow panel: each row auto-sizes to its real height (no overlap)
+$panel = New-Object System.Windows.Forms.FlowLayoutPanel
+$panel.Dock = "Fill"; $panel.FlowDirection = "TopDown"; $panel.WrapContents = $false; $panel.AutoScroll = $true
+$panel.BackColor = $cBg; $panel.Padding = New-Object System.Windows.Forms.Padding(24, 16, 24, 20)
+$form.Controls.Add($panel)
+
+function Add-Row($c, $top) { $c.Margin = New-Object System.Windows.Forms.Padding(0, $top, 0, 0); [void]$panel.Controls.Add($c) }
+function Style-Text($tb) { $tb.BackColor = $cPanel; $tb.ForeColor = $cBone; $tb.BorderStyle = "FixedSingle"; $tb.Width = $INNER }
+function New-Section($text) {
+  $l = New-Object System.Windows.Forms.Label; $l.Text = $text; $l.AutoSize = $true; $l.ForeColor = $cTorch
+  $l.Font = New-Object System.Drawing.Font("Segoe UI", 8.5, [System.Drawing.FontStyle]::Bold)
+  Add-Row $l 13
+}
+function New-Caption($text) {
+  $l = New-Object System.Windows.Forms.Label; $l.Text = $text; $l.AutoSize = $true; $l.ForeColor = $cBone
+  Add-Row $l 6; return $l
+}
+
 # header: caveman + title
+$header = New-Object System.Windows.Forms.Panel
+$header.AutoSize = $true; $header.AutoSizeMode = "GrowAndShrink"; $header.MinimumSize = New-Object System.Drawing.Size($INNER, 74)
 $pic = New-Object System.Windows.Forms.PictureBox
-$pic.SizeMode = "Zoom"; $pic.Size = New-Object System.Drawing.Size(78, 92); $pic.Location = New-Object System.Drawing.Point($LEFT, 24)
+$pic.SizeMode = "Zoom"; $pic.Size = New-Object System.Drawing.Size(58, 70); $pic.Location = New-Object System.Drawing.Point(0, 4)
 $hero = Join-Path $root "public\assets\oog-hero.png"
 if (Test-Path $hero) { try { $pic.Image = [System.Drawing.Image]::FromFile($hero) } catch {} }
-$form.Controls.Add($pic)
 $title = New-Object System.Windows.Forms.Label
-$title.Text = "oog.dev"; $title.Font = (New-Object System.Drawing.Font("Segoe UI", 18, [System.Drawing.FontStyle]::Bold)); $title.ForeColor = $cTorch; $title.AutoSize = $true; $title.Location = New-Object System.Drawing.Point(128, 36)
-$form.Controls.Add($title)
+$title.Text = "oog.dev"; $title.Font = (New-Object System.Drawing.Font("Segoe UI", 17, [System.Drawing.FontStyle]::Bold)); $title.ForeColor = $cTorch; $title.AutoSize = $true; $title.Location = New-Object System.Drawing.Point(74, 8)
 $sub = New-Object System.Windows.Forms.Label
-$sub.Text = "Host Claude Code here, drive it from your phone."; $sub.AutoSize = $true; $sub.ForeColor = $cBone; $sub.Location = New-Object System.Drawing.Point(130, 78)
-$form.Controls.Add($sub)
-
-$y = 138
-function Add-Section($text) {
-  $script:y += 16
-  $l = New-Object System.Windows.Forms.Label
-  $l.Text = $text; $l.AutoSize = $true; $l.ForeColor = $cTorch
-  $l.Font = New-Object System.Drawing.Font("Segoe UI", 8.5, [System.Drawing.FontStyle]::Bold)
-  $l.Location = New-Object System.Drawing.Point($LEFT, $script:y)
-  $form.Controls.Add($l); $script:y += 28
-}
-function Add-Label($text) {
-  $l = New-Object System.Windows.Forms.Label
-  $l.Text = $text; $l.AutoSize = $true; $l.ForeColor = $cBone; $l.Location = New-Object System.Drawing.Point($LEFT, $script:y)
-  $form.Controls.Add($l); $script:y += 24; return $l
-}
-function Style-Text($tb) { $tb.BackColor = $cPanel; $tb.ForeColor = $cBone; $tb.BorderStyle = "FixedSingle" }
+$sub.Text = "Host Claude Code here, drive it from your phone."; $sub.AutoSize = $true; $sub.ForeColor = $cBone; $sub.Location = New-Object System.Drawing.Point(76, 46)
+$header.Controls.AddRange(@($pic, $title, $sub))
+Add-Row $header 0
 
 # token
-Add-Section "AUTH TOKEN"
+New-Section "AUTH TOKEN"
 $cbGen = New-Object System.Windows.Forms.CheckBox
 $cbGen.Text = "Generate a strong token for me"; $cbGen.Checked = $true; $cbGen.AutoSize = $true; $cbGen.ForeColor = $cBone
-$cbGen.Location = New-Object System.Drawing.Point($LEFT, $y); $form.Controls.Add($cbGen); $y += 30
+Add-Row $cbGen 6
 $tbToken = New-Object System.Windows.Forms.TextBox
-$tbToken.Location = New-Object System.Drawing.Point($LEFT, $y); $tbToken.Size = New-Object System.Drawing.Size($W, 24); Style-Text $tbToken
-$tbToken.Enabled = $false; try { $tbToken.PlaceholderText = "...or paste your own token" } catch {}
-$form.Controls.Add($tbToken); $y += 42
+Style-Text $tbToken; $tbToken.Enabled = $false; try { $tbToken.PlaceholderText = "...or paste your own token" } catch {}
+Add-Row $tbToken 8
 $cbGen.add_CheckedChanged({ $tbToken.Enabled = -not $cbGen.Checked })
 
-# code folder
-Add-Section "YOUR CODE"
-Add-Label "Folder that holds your repos (the cave picker):" | Out-Null
+# code folder (textbox + Browse share an auto-sized row panel)
+New-Section "YOUR CODE"
+New-Caption "Folder that holds your repos (the cave picker):" | Out-Null
+$dirRow = New-Object System.Windows.Forms.Panel
+$dirRow.AutoSize = $true; $dirRow.AutoSizeMode = "GrowAndShrink"; $dirRow.MinimumSize = New-Object System.Drawing.Size($INNER, 30)
 $tbDir = New-Object System.Windows.Forms.TextBox
 $def = Join-Path $env:USERPROFILE ".code"; if (-not (Test-Path $def)) { $def = $env:USERPROFILE }
-$tbDir.Text = $def; $tbDir.Location = New-Object System.Drawing.Point($LEFT, ($y + 3)); $tbDir.Size = New-Object System.Drawing.Size(($W - 128), 24); Style-Text $tbDir
-$form.Controls.Add($tbDir)
+$tbDir.Text = $def; $tbDir.BackColor = $cPanel; $tbDir.ForeColor = $cBone; $tbDir.BorderStyle = "FixedSingle"; $tbDir.Width = ($INNER - 128); $tbDir.Location = New-Object System.Drawing.Point(0, 4)
 $btnBrowse = New-Object System.Windows.Forms.Button
-$btnBrowse.Text = "Browse..."; $btnBrowse.AutoSize = $true; $btnBrowse.Location = New-Object System.Drawing.Point(($LEFT + $W - 116), $y); $btnBrowse.MinimumSize = New-Object System.Drawing.Size(116, 30)
+$btnBrowse.Text = "Browse..."; $btnBrowse.AutoSize = $true; $btnBrowse.MinimumSize = New-Object System.Drawing.Size(116, 30); $btnBrowse.Location = New-Object System.Drawing.Point(($INNER - 116), 0)
 $btnBrowse.FlatStyle = "Flat"; $btnBrowse.BackColor = $cRock; $btnBrowse.ForeColor = $cBone; $btnBrowse.FlatAppearance.BorderSize = 0
 $btnBrowse.add_Click({ $d = New-Object System.Windows.Forms.FolderBrowserDialog; if ($d.ShowDialog() -eq "OK") { $tbDir.Text = $d.SelectedPath } })
-$form.Controls.Add($btnBrowse); $y += 50
+$dirRow.Controls.AddRange(@($tbDir, $btnBrowse))
+Add-Row $dirRow 6
 
-# access mode
-Add-Section "HOW TO REACH IT"
+# access mode (radios in an auto-sized group box)
+New-Section "HOW TO REACH IT"
 $grp = New-Object System.Windows.Forms.GroupBox
-$grp.Text = ""; $grp.ForeColor = $cBone; $grp.Location = New-Object System.Drawing.Point($LEFT, $y); $grp.Size = New-Object System.Drawing.Size($W, 128)
-$rbTail = New-Object System.Windows.Forms.RadioButton; $rbTail.Text = "Phone over Tailscale (recommended)"; $rbTail.ForeColor = $cBone; $rbTail.Location = New-Object System.Drawing.Point(18, 22); $rbTail.AutoSize = $true; $rbTail.Checked = $true
-$rbOog = New-Object System.Windows.Forms.RadioButton; $rbOog.Text = "Local on this PC at https://oog.dev"; $rbOog.ForeColor = $cBone; $rbOog.Location = New-Object System.Drawing.Point(18, 56); $rbOog.AutoSize = $true
-$rbLocal = New-Object System.Windows.Forms.RadioButton; $rbLocal.Text = "Plain http://localhost (quick test)"; $rbLocal.ForeColor = $cBone; $rbLocal.Location = New-Object System.Drawing.Point(18, 90); $rbLocal.AutoSize = $true
-$grp.Controls.AddRange(@($rbTail, $rbOog, $rbLocal)); $form.Controls.Add($grp); $y += 140
+$grp.Text = ""; $grp.ForeColor = $cBone; $grp.AutoSize = $true; $grp.AutoSizeMode = "GrowAndShrink"; $grp.MinimumSize = New-Object System.Drawing.Size($INNER, 0); $grp.Padding = New-Object System.Windows.Forms.Padding(8, 4, 8, 8)
+$rflow = New-Object System.Windows.Forms.FlowLayoutPanel
+$rflow.FlowDirection = "TopDown"; $rflow.WrapContents = $false; $rflow.AutoSize = $true; $rflow.AutoSizeMode = "GrowAndShrink"; $rflow.Location = New-Object System.Drawing.Point(10, 12)
+$rbTail = New-Object System.Windows.Forms.RadioButton; $rbTail.Text = "Phone over Tailscale (recommended)"; $rbTail.ForeColor = $cBone; $rbTail.AutoSize = $true; $rbTail.Checked = $true; $rbTail.Margin = New-Object System.Windows.Forms.Padding(0, 0, 0, 8)
+$rbOog = New-Object System.Windows.Forms.RadioButton; $rbOog.Text = "Local on this PC at https://oog.dev"; $rbOog.ForeColor = $cBone; $rbOog.AutoSize = $true; $rbOog.Margin = New-Object System.Windows.Forms.Padding(0, 0, 0, 8)
+$rbLocal = New-Object System.Windows.Forms.RadioButton; $rbLocal.Text = "Plain http://localhost (quick test)"; $rbLocal.ForeColor = $cBone; $rbLocal.AutoSize = $true; $rbLocal.Margin = New-Object System.Windows.Forms.Padding(0, 0, 0, 0)
+$rflow.Controls.AddRange(@($rbTail, $rbOog, $rbLocal))
+$grp.Controls.Add($rflow)
+Add-Row $grp 6
 
-# tailnet hostname
-$lblHost = Add-Label "Tailnet hostname (auto-detected; edit if blank):"
+$lblHost = New-Caption "Tailnet hostname (auto-detected; edit if blank):"
 $tbHost = New-Object System.Windows.Forms.TextBox
-$tbHost.Location = New-Object System.Drawing.Point($LEFT, $y); $tbHost.Size = New-Object System.Drawing.Size($W, 24); Style-Text $tbHost
-$tbHost.Text = (Get-TailnetName)
-$form.Controls.Add($tbHost); $y += 40
+Style-Text $tbHost; $tbHost.Text = (Get-TailnetName)
+Add-Row $tbHost 6
 $toggleHost = { $vis = $rbTail.Checked; $lblHost.Visible = $vis; $tbHost.Visible = $vis }
 $rbTail.add_CheckedChanged($toggleHost); $rbOog.add_CheckedChanged($toggleHost); $rbLocal.add_CheckedChanged($toggleHost)
 
 # options
-Add-Section "OPTIONS"
-function Add-Check($text, $checked) {
-  $cb = New-Object System.Windows.Forms.CheckBox
-  $cb.Text = $text; $cb.Checked = $checked; $cb.AutoSize = $true; $cb.ForeColor = $cBone; $cb.Location = New-Object System.Drawing.Point($LEFT, $script:y)
-  $form.Controls.Add($cb); $script:y += 28; return $cb
+New-Section "OPTIONS"
+function New-Check($text, $checked, $top) {
+  $cb = New-Object System.Windows.Forms.CheckBox; $cb.Text = $text; $cb.Checked = $checked; $cb.AutoSize = $true; $cb.ForeColor = $cBone
+  Add-Row $cb $top; return $cb
 }
-$cbApprove = Add-Check "Phone approvals (Allow/Deny on phone)" $true
-$cbTray = Add-Check "Run in system tray at log on (no terminal)" $true
-$cbStart = Add-Check "Start oog now when setup finishes" $true
-$cbResume = Add-Check "Auto-resume caves on start" $false
-$y += 18
+$cbApprove = New-Check "Phone approvals (Allow/Deny on phone)" $true 6
+$cbTray = New-Check "Run in system tray at log on (no terminal)" $true 4
+$cbStart = New-Check "Start oog now when setup finishes" $true 4
+$cbResume = New-Check "Auto-resume caves on start" $false 4
 
 # set up button
 $btnGo = New-Object System.Windows.Forms.Button
-$btnGo.Text = "Set up oog"; $btnGo.Location = New-Object System.Drawing.Point($LEFT, $y); $btnGo.Size = New-Object System.Drawing.Size($W, 44)
-$btnGo.FlatStyle = "Flat"; $btnGo.BackColor = $cEmber; $btnGo.ForeColor = [System.Drawing.Color]::FromArgb(42, 22, 7); $btnGo.FlatAppearance.BorderSize = 0
+$btnGo.Text = "Set up oog"; $btnGo.Size = New-Object System.Drawing.Size($INNER, 44); $btnGo.FlatStyle = "Flat"; $btnGo.BackColor = $cEmber; $btnGo.ForeColor = [System.Drawing.Color]::FromArgb(42, 22, 7); $btnGo.FlatAppearance.BorderSize = 0
 $btnGo.Font = New-Object System.Drawing.Font("Segoe UI", 11, [System.Drawing.FontStyle]::Bold)
-$form.Controls.Add($btnGo); $y += 54
+Add-Row $btnGo 12
 
 # output log
 $out = New-Object System.Windows.Forms.TextBox
-$out.Multiline = $true; $out.ScrollBars = "Vertical"; $out.ReadOnly = $true
-$out.Location = New-Object System.Drawing.Point($LEFT, $y); $out.Size = New-Object System.Drawing.Size($W, 96)
-$out.BackColor = $cPanel; $out.ForeColor = $cBone; $out.BorderStyle = "FixedSingle"
-$out.Font = New-Object System.Drawing.Font("Consolas", 9)
-$form.Controls.Add($out)
+$out.Multiline = $true; $out.ScrollBars = "Vertical"; $out.ReadOnly = $true; $out.Size = New-Object System.Drawing.Size($INNER, 58)
+$out.BackColor = $cPanel; $out.ForeColor = $cBone; $out.BorderStyle = "FixedSingle"; $out.Font = New-Object System.Drawing.Font("Consolas", 9)
+Add-Row $out 10
+
+# size the form to the content so it shows everything without scrolling (clamped to the screen)
+$form.PerformLayout(); $panel.PerformLayout()
+$need = $panel.GetPreferredSize((New-Object System.Drawing.Size(0, 0)))
+$wa = [System.Windows.Forms.Screen]::FromControl($form).WorkingArea
+$wantH = [Math]::Min($need.Height, $wa.Height - 56)
+$form.ClientSize = New-Object System.Drawing.Size(600, $wantH)
 
 function Strip-Ansi($s) { return ($s -replace "\x1b\[[0-9;]*m", "") }
 function b01($c) { if ($c) { "1" } else { "0" } }
