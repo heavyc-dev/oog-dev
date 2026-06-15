@@ -156,7 +156,7 @@ function New-Check($text, $checked, $top) {
   Add-Row $cb $top; return $cb
 }
 $cbApprove = New-Check "Phone approvals (Allow/Deny on phone)" $true 6
-$cbTray = New-Check "Run in system tray at log on (no terminal)" $true 4
+$cbTray = New-Check "Install (Start Menu + run at log on; shows in Windows Settings)" $true 4
 $cbStart = New-Check "Start oog now when setup finishes" $true 4
 $cbResume = New-Check "Auto-resume caves on start" $false 4
 
