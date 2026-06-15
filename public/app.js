@@ -32,7 +32,7 @@
   //   FRAMES.chisel = 'assets/claude-chisel.png'; FRAME_SEQ.tool = ['chisel', 'base'];
   //   FRAMES.wave = 'assets/claude-wave.png';     FRAME_SEQ.wave = ['wave', 'base'];
   const FRAME_SEQ = {};
-  let frameTimer = null, ambientMood = 'idle', moodT = null, permAlert = false, workStart = 0;
+  let frameTimer = null, ambientMood = 'idle', moodT = null, permAlert = false, workStart = 0, allowStreak = 0, streakT = null;
   function stopFrames(){ if (frameTimer) { clearInterval(frameTimer); frameTimer = null; if (!talking) setHdr('base'); } }
   function playFrames(m){ const seq = FRAME_SEQ[m]; stopFrames(); if (!seq || !seq.length || reduce) return false; let i = 0; const step = () => { const fn = seq[i++ % seq.length]; if (FRAMES[fn]) setHdr(fn); }; step(); frameTimer = setInterval(step, 160); return true; }
   function setMoodClass(m){ const h = $('#hdrTablet'); if (!h) return; h.classList.remove(...MOODS.map(x => 'mood-' + x)); h.classList.add('mood-' + m); playFrames(m); }
@@ -60,7 +60,7 @@
     ws.onclose = ev => {
       if (ev.code === 1008 && /origin/i.test(ev.reason || '')) { connMsg('blocked: this page’s origin isn’t in ALLOWED_ORIGINS. Open the allowed URL (your Tailscale/oog.dev address), or add this origin in .env.'); show('connect'); }
       else if (ev.code === 1008) { connMsg('wrong word. try again.'); localStorage.removeItem('oog_token'); token = ''; show('connect'); }
-      else { if (activeId) pendingReattach = activeId; show('connect'); scheduleReconnect(); }
+      else { if (activeId) pendingReattach = activeId; show('connect'); $('#connFace') && $('#connFace').classList.add('cold'); scheduleReconnect(); }
     };
     ws.onerror = () => {};
   }
@@ -153,7 +153,7 @@
   // messages
   function handle(m){
     switch (m.type) {
-      case 'authed': reconnectN = 0; vapidKey = m.vapidPublicKey || ''; refreshNotifBtn(); localStorage.setItem('oog_token', token); connMsg(''); send({ type:'list_projects' }); if (!activeId) show('caves'); break;
+      case 'authed': reconnectN = 0; vapidKey = m.vapidPublicKey || ''; refreshNotifBtn(); localStorage.setItem('oog_token', token); connMsg(''); $('#connFace') && $('#connFace').classList.remove('cold'); send({ type:'list_projects' }); if (!activeId) show('caves'); break;
       case 'sessions':
         sessions.clear(); (m.sessions || []).forEach(s => sessions.set(s.id, s)); lastEmbers = m.embers || [];
         for (const k of [...queues.keys()]) if (!sessions.has(k)) queues.delete(k);
@@ -320,7 +320,11 @@
     if ($('#choice').dataset.mode === 'hook' && currentPermId) { send({ type:'permission', id: currentPermId, decision: allow ? 'allow' : 'deny' }); currentPermId = null; }
     else if (activeId) { send({ type:'key', sessionId:activeId, key:b.dataset.key }); send({ type:'key', sessionId:activeId, key:'enter' }); }
     closeChoice();
-    if (allow) flashMood('pop', 460);   // caveman fist-pump
+    if (allow) {
+      flashMood('pop', 460);   // caveman fist-pump
+      allowStreak++; clearTimeout(streakT); streakT = setTimeout(() => { allowStreak = 0; }, 12000);
+      if (allowStreak >= 3) flashMood('hype', 2400);   // on a roll → hyped bob
+    } else { allowStreak = 0; }
   }));
   $('#choiceDismiss').onclick = () => { if (currentPermId) { send({ type:'permission', id: currentPermId, decision:'deny' }); currentPermId = null; } closeChoice(); };
 

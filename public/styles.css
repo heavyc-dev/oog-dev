@@ -138,6 +138,8 @@ h1.head{ font-family:var(--font-head); font-weight:400; font-size:30px; color:va
 #hdrTablet.mood-cheer  .face{ animation:oog-cheer .65s ease-out; }
 #hdrTablet.mood-lean   .face{ animation:oog-lean .22s ease-out forwards; }
 #hdrTablet.mood-hype   .face{ animation:oog-bob 1.3s ease-in-out infinite; }
+.face.cold{ animation:oog-shiver .11s linear infinite; }   /* connect screen: shiver while the fire's cold */
+@media (prefers-reduced-motion: reduce){ .face.cold{ animation:none; } }
 #hdrTablet.mood-alert{ box-shadow:var(--chisel), 0 0 14px var(--torch); }
 /* sleepy Zzz when the fire's out */
 #hdrTablet.mood-off{ position:relative; }

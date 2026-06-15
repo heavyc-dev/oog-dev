@@ -1,6 +1,6 @@
 /* oog.dev service worker — caches the app shell so it installs and loads offline-fast.
    Static GETs only; the WebSocket and /hook/* never go through here. */
-const CACHE = "oog-v14";
+const CACHE = "oog-v15";
 const SHELL = [
   "/", "/index.html", "/styles.css", "/app.js", "/manifest.webmanifest",
   "/vendor/xterm.js", "/vendor/xterm.css", "/vendor/addon-fit.js",
