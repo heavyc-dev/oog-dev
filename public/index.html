@@ -31,6 +31,7 @@
     <div class="topline">
       <div><div class="eyebrow">OOG.DEV</div><h1 class="head">Pick a cave</h1></div>
       <div style="display:flex;gap:8px">
+        <button class="btn ghost" id="installBtn" title="install as an app" style="display:none">📲</button>
         <button class="btn ghost" id="settingsBtn" title="settings">⚙</button>
         <button class="btn ghost" id="notifBtn" title="enable notifications">🔔</button>
         <button class="btn ghost" id="logoutBtn" title="forget the saved token">forget</button>
@@ -119,6 +120,20 @@
   <div class="browserbox">
     <div class="vhead"><span id="browsePath">…</span><div class="vactions"><button class="btn" id="browseHere">▸ light here</button><button class="btn ghost" id="browseClose">✕</button></div></div>
     <div id="browseList" class="browselist"></div>
+  </div>
+</div>
+
+<!-- iOS add-to-home-screen instructions -->
+<div id="iosInstall">
+  <div class="iosbox">
+    <div class="plate" style="font-size:14px">ADD <b>OOG</b> TO HOME SCREEN</div>
+    <p>iOS can't install it for you — three taps:</p>
+    <ol>
+      <li>Tap the <b>Share</b> button <span class="shareico">⬆️</span> at the bottom of Safari.</li>
+      <li>Choose <b>“Add to Home Screen”</b>.</li>
+      <li>Open <b>oog</b> from the new icon — it'll be signed in.</li>
+    </ol>
+    <button class="btn" id="iosInstallClose">got it</button>
   </div>
 </div>
 

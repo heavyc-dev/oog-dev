@@ -453,6 +453,25 @@
   const notifBtn = $('#notifBtn');
   if (notifBtn) { if (!('PushManager' in window)) notifBtn.style.display = 'none'; else { notifBtn.onclick = enableNotifs; refreshNotifBtn(); } }
 
+  // ── install as an app (Add to Home Screen) ──
+  let deferredInstall = null;
+  const isStandalone = () => matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+  const isIOS = () => /iphone|ipad|ipod/i.test(navigator.userAgent) && !window.MSStream;
+  function refreshInstallBtn(){ const b = $('#installBtn'); if (!b) return; b.style.display = (!isStandalone() && (deferredInstall || isIOS())) ? '' : 'none'; }
+  window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); deferredInstall = e; refreshInstallBtn(); });
+  window.addEventListener('appinstalled', () => { deferredInstall = null; refreshInstallBtn(); });
+  const installBtn = $('#installBtn');
+  if (installBtn) installBtn.onclick = async () => {
+    if (deferredInstall) { deferredInstall.prompt(); try { await deferredInstall.userChoice; } catch {} deferredInstall = null; refreshInstallBtn(); return; }
+    if (isIOS()) {
+      // bake the token into the URL so the home-screen icon launches already signed in
+      if (token) { try { history.replaceState(null, '', location.pathname + '?token=' + encodeURIComponent(token)); } catch {} }
+      $('#iosInstall').classList.add('show');
+    }
+  };
+  const iosClose = $('#iosInstallClose'); if (iosClose) iosClose.onclick = () => $('#iosInstall').classList.remove('show');
+  refreshInstallBtn();
+
   startBlink();
   if (token) connect(); else show('connect');
 })();
