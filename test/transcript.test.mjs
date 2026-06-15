@@ -53,5 +53,5 @@ test("stripAnsi removes escape codes", () => {
 test("encodeCwd maps a windows path", () => {
   // matches Claude Code's own project-dir encoding: every non-alphanumeric -> '-'
   // (incl. the dot in dotfolders like .code, verified against ~/.claude/projects)
-  assert.equal(encodeCwd("C:\\Users\\Carlo\\.code\\repo"), "C--Users-Carlo--code-repo");
+  assert.equal(encodeCwd("C:\\Users\\You\\.code\\repo"), "C--Users-You--code-repo");
 });
