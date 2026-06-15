@@ -23,6 +23,12 @@ A pixel caveman who grunts through a stone tablet — your real `claude` REPL, r
 
 Each cave is the real `claude` running under a pseudo-terminal — so it bills exactly like typing in your own terminal. The phone shows a faithful, themed terminal (xterm.js) and lets you launch, switch, and resume sessions.
 
+<div align="center">
+
+<img src="public/assets/screenshot.png" width="760" alt="oog.dev — connect screen and cave picker">
+
+</div>
+
 ---
 
 ## 🚀 Install
