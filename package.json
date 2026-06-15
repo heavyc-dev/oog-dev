@@ -21,6 +21,8 @@
     "setup": "node setup.mjs",
     "setup:gui": "powershell -NoProfile -ExecutionPolicy Bypass -STA -File scripts/oog-setup-gui.ps1",
     "build:exe": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build-exe.ps1",
+    "install:app": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/install.ps1",
+    "uninstall:app": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/uninstall.ps1",
     "start": "tsx server.ts",
     "dev": "tsx watch server.ts",
     "test": "node --test",

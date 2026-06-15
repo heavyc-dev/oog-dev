@@ -193,18 +193,14 @@ async function main() {
   writeFileSync(join(ROOT, ".env"), lines.join("\n") + "\n");
   ok(".env written");
 
-  // 8) startup task — runs the bridge in the system tray (caveman icon) at logon, no terminal
-  head("Always-on (optional)");
-  if (isWin && await yes("Run oog in the system tray at log on (caveman icon, no terminal)?", false, "OOG_TRAY")) {
-    // /TR is one command string. Pass it as a single arg with shell:false so the shell can't
-    // split "powershell -ExecutionPolicy …" into separate schtasks args. -STA is needed for the
-    // tray's WinForms NotifyIcon; -WindowStyle Hidden keeps it windowless.
-    const ps1 = join(ROOT, "scripts", "oog-tray.ps1");
-    const tr = `powershell -ExecutionPolicy Bypass -WindowStyle Hidden -STA -File "${ps1}"`;
-    const reg = run("schtasks", ["/Create", "/TN", "oog.dev-bridge", "/TR", tr, "/SC", "ONLOGON", "/F"], { stdio: "inherit", shell: false });
+  // 8) install as a per-user app — Start Menu + Startup shortcut + Installed-apps entry (no admin)
+  head("Install (optional)");
+  if (isWin && await yes("Install oog (Start Menu + run at log on; appears in Windows Settings)?", false, "OOG_TRAY")) {
+    const installer = join(ROOT, "scripts", "install.ps1");
+    const reg = run("powershell", ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", installer], { stdio: "inherit", shell: false });
     reg.status === 0
-      ? ok("tray task 'oog.dev-bridge' created — it starts at next log on (or run scripts\\oog-tray.ps1 now)")
-      : warn("couldn't register the task — re-run setup from an elevated (Administrator) terminal, or run scripts\\oog-tray.ps1 manually.");
+      ? ok("installed — toggle startup in Settings → Apps → Startup; remove via Settings → Apps → Installed apps")
+      : warn("install step failed — run scripts\\install.ps1 manually.");
   }
 
   // done
