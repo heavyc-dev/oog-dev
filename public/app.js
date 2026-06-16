@@ -75,7 +75,6 @@
   let term = null, fit = null, search = null;
   let fontSize = Math.min(24, Math.max(9, +localStorage.getItem('oog_fontsize') || 13));
   const queues = new Map();
-  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
 
   // connect
   const wsUrl = () => `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/`;
@@ -459,22 +458,6 @@
   }
   $('#camBtn').onclick = () => $('#fileInput').click();
   $('#fileInput').addEventListener('change', e => { const f = e.target.files && e.target.files[0]; if (f) sendImage(f); e.target.value = ''; });
-
-  // ── voice dictation ──
-  (function setupMic(){
-    const b = $('#micBtn'); if (!b) return;
-    if (!SR) { b.style.display = 'none'; return; }
-    let rec = null, recing = false;
-    b.onclick = () => {
-      if (recing) { rec && rec.stop(); return; }
-      rec = new SR(); rec.lang = 'en-US'; rec.interimResults = true; rec.continuous = true;
-      const baseVal = input.value ? input.value + ' ' : '';
-      rec.onresult = ev => { let s = ''; for (let i = ev.resultIndex; i < ev.results.length; i++) s += ev.results[i][0].transcript; input.value = baseVal + s; input.style.height = 'auto'; input.style.height = Math.min(120, input.scrollHeight) + 'px'; };
-      rec.onend = () => { recing = false; b.classList.remove('rec'); input.focus(); };
-      rec.onerror = ev => { recing = false; b.classList.remove('rec'); if (!window._vh && term) { window._vh = 1; term.write('\r\n\x1b[33m🎤 voice didn’t work here — use your keyboard’s mic (Web Speech is unreliable on iOS)\x1b[0m\r\n'); } };
-      try { rec.start(); recing = true; b.classList.add('rec'); } catch {}
-    };
-  })();
 
   // ── file viewer (this change ↔ current file) ──
   const colorizeDiff = s => esc(String(s || '').replace(/\n$/, '').slice(0, 8000)).split('\n').map(l => l.startsWith('+') ? `<span class="add">${l}</span>` : l.startsWith('-') ? `<span class="del">${l}</span>` : l).join('\n');

@@ -56,7 +56,7 @@ The wizard generates a strong token, sets up Tailscale (or a local cert), instal
 | ⌨️ **Slash autocomplete** | Type `/` → built-ins + your plugins, skills & project commands |
 | 🔥 **Caves & embers** | Launch, switch, and `--resume` past sessions from the phone |
 | 🔍 **Search · 🔠 zoom · ⇧Tab** | Find in scrollback, resize text, send back-tab to toggle modes |
-| 📷 **Photo · 🎤 voice** | Send a picture into the chat; dictate prompts |
+| 📷 **Photo** | Send a picture into the chat |
 | 🔔 **Push** | Buzz when Claude needs approval, finishes, or errors |
 | 📲 **Scan to connect** | A QR (terminal, tray, or ⚙ Settings) opens the app on your phone, signed in |
 | 🦴 **System tray** | Windows tray app (no terminal): Open · Show pairing QR · Copy token · Restart · Quit |
