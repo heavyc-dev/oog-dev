@@ -7,14 +7,15 @@ import { createServer as createHttp } from "node:http";
 import { createServer as createHttps } from "node:https";
 import { readFile, stat, open, readdir } from "node:fs/promises";
 import { existsSync, readFileSync, writeFileSync, mkdirSync, unlinkSync, readdirSync, statSync } from "node:fs";
-import { join, extname, normalize, dirname, isAbsolute, sep } from "node:path";
+import { join, extname, normalize, dirname, isAbsolute } from "node:path";
 import { homedir } from "node:os";
-import { randomUUID } from "node:crypto";
+import { randomUUID, timingSafeEqual } from "node:crypto";
 import { fileURLToPath } from "node:url";
 import { WebSocketServer, WebSocket } from "ws";
 import webpush from "web-push";
 import * as pty from "node-pty";
 import { mapTranscriptLine, stripAnsi, encodeCwd, isUserPrompt } from "./transcript.mjs";
+import { within } from "./pathsafe.mjs";
 import { printQR } from "./qr-terminal.mjs";
 
 const ROOT = dirname(fileURLToPath(import.meta.url));
@@ -101,9 +102,13 @@ if (HOOK_ENABLED) {
   }, null, 2));
 }
 
-const norm = (c) => (typeof c === "string" ? c : JSON.stringify(c));
-// true only if `child` is `parent` or sits beneath it (boundary-aware, unlike a bare startsWith)
-const within = (parent: string, child: string) => { const p = normalize(parent), c = normalize(child); return c === p || c.startsWith(p.endsWith(sep) ? p : p + sep); };
+// constant-time auth check — the token is the ONLY gate, so never leak its length/contents via
+// the early-out of a plain `===` string compare.
+const tokenOk = (t: unknown): boolean => {
+  if (typeof t !== "string") return false;
+  const a = Buffer.from(t), b = Buffer.from(AUTH_TOKEN!);
+  return a.length === b.length && timingSafeEqual(a, b);
+};
 
 interface Session {
   id: string; cwd: string; proc: pty.IPty; spawnedAt: number; resumeId?: string;
@@ -456,15 +461,28 @@ const httpServer = useTLS
 
 const wss = new WebSocketServer({ server: httpServer });
 wss.on("connection", (ws, req) => {
-  if (ALLOWED_ORIGINS.length && req.headers.origin && !ALLOWED_ORIGINS.includes(req.headers.origin)) { ws.close(1008, "origin"); return; }
+  const origin = req.headers.origin;
+  if (origin) {
+    if (ALLOWED_ORIGINS.length) {
+      if (!ALLOWED_ORIGINS.includes(origin)) { ws.close(1008, "origin"); return; }
+    } else {
+      // No explicit allowlist → default to same-origin only. A browser sets Origin to the page
+      // that opened the socket; the real PWA is served by this bridge, so its Origin host matches
+      // the Host header. A cross-site page (CSWSH) won't — reject it. Non-browser clients (wscat)
+      // send no Origin and fall through to the token gate.
+      try {
+        if (req.headers.host && new URL(origin).host !== req.headers.host) { ws.close(1008, "origin"); return; }
+      } catch { ws.close(1008, "origin"); return; }
+    }
+  }
   const url = new URL(req.url ?? "/", "http://localhost");
-  let authed = url.searchParams.get("token") === AUTH_TOKEN; // URL-token compat (wscat)
+  let authed = tokenOk(url.searchParams.get("token")); // URL-token compat (wscat)
   if (authed) { clients.add(ws); sendTo(ws, { type: "authed", vapidPublicKey: VAPID_PUBLIC || "" }); sendTo(ws, sessionsMsg()); }
 
   ws.on("message", async (data) => {
     let m: any; try { m = JSON.parse(data.toString()); } catch { return; }
     if (!authed) {
-      if (m.type === "auth" && m.token === AUTH_TOKEN) { authed = true; clients.add(ws); sendTo(ws, { type: "authed", vapidPublicKey: VAPID_PUBLIC || "" }); sendTo(ws, sessionsMsg()); }
+      if (m.type === "auth" && tokenOk(m.token)) { authed = true; clients.add(ws); sendTo(ws, { type: "authed", vapidPublicKey: VAPID_PUBLIC || "" }); sendTo(ws, sessionsMsg()); }
       else ws.close(1008, "unauthorized");
       return;
     }
@@ -534,7 +552,18 @@ wss.on("connection", (ws, req) => {
         sendTo(ws, { type: "push_ok" }); break;
     }
   });
-  ws.on("close", () => clients.delete(ws));
+  ws.on("close", () => {
+    clients.delete(ws);
+    // last phone gone → no one can answer a pending approval. Resolve them as "ask" so the hook
+    // returns immediately and Claude falls back to its own prompt instead of blocking ~9 min.
+    if (clients.size === 0 && pendingPerms.size) {
+      for (const [, pp] of pendingPerms) {
+        clearTimeout(pp.timer);
+        try { pp.res.writeHead(200, { "content-type": "application/json" }); pp.res.end(JSON.stringify({ decision: "ask" })); } catch {}
+      }
+      pendingPerms.clear();
+    }
+  });
 });
 
 const KEYS: Record<string, string> = {
