@@ -14,7 +14,7 @@ import { fileURLToPath } from "node:url";
 import { WebSocketServer, WebSocket } from "ws";
 import webpush from "web-push";
 import * as pty from "node-pty";
-import { mapTranscriptLine, stripAnsi, encodeCwd, isUserPrompt } from "./transcript.mjs";
+import { mapTranscriptLine, encodeCwd, isUserPrompt } from "./transcript.mjs";
 import { within } from "./pathsafe.mjs";
 import { printQR } from "./qr-terminal.mjs";
 
